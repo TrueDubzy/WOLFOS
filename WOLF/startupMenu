@@ -1,0 +1,35 @@
+--[[Copyright (C) 2012 James Chapman (aka: Toxic Wolf / toxicwolf)
+WolfOS, and all of its variations (WolfNB, WolfDB, WolfTC) are produced by toxicwolf (toxic.wolf@hotmail.co.uk).
+Please ask for permission before attempting to redistribute any code relating to WolfOS or any of its variations, IN ANY FORM.
+Special thanks to Wesley van Loon (aka: King Tamotsu / KingTamotsu) for all his ideas and help with designing the Operating System. ]]--
+
+sProgram = "Startup Menu"
+
+function os.pullEvent()
+	local sEvent, p1, p2, p3, p4, p5 = os.pullEventRaw()
+	if sEvent == "terminate" then
+	end
+	return sEvent, p1, p2, p3, p4, p5
+end
+
+function menu()
+	repeat
+		if nMenuNum == 0 then
+			tChoices[1] = "Login"
+			tChoices[2] = ""
+			tChoices[3] = "Reboot"
+			tChoices[4] = "Shutdown"
+			tActions[1] = function() bMenuLoop = false WAPI.login() end
+			tActions[2] = function() bMenuLoop = false WAPI.reboot() end
+			tActions[3] = function() bMenuLoop = false WAPI.shutdown() end
+			local nSelection = WAPI.runMenu(tChoices, "Welcome User!", sProgram)
+			tActions[nSelection]()
+		end
+	until bMenuLoop == false
+end
+
+bMenuLoop = true
+nMenuNum = 0
+tChoices = {}
+tActions = {}
+menu()

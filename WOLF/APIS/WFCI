@@ -1,0 +1,95 @@
+--[[Copyright (C) 2012 James Chapman (aka: Toxic Wolf / toxicwolf)
+WolfOS, and all of its variations (WolfNB, WolfDB, WolfTC) are produced by toxicwolf (toxic.wolf@hotmail.co.uk).
+Please ask for permission before attempting to redistribute any code relating to WolfOS or any of its variations, IN ANY FORM.
+Special thanks to Wesley van Loon (aka: King Tamotsu / KingTamotsu) for all his ideas and help with designing the Operating System. ]]--
+
+-- Wolf File Control Index
+
+function exists(sPath) -- Returns true if the specified file exists
+	local hFile = io.open(sPath, "r")
+	if hFile ~= nil then
+		hFile:close()
+		return true
+	end
+	return false
+end
+
+function readToTable(sPath) -- Returns a table containing each line of the specified file in a seperate index
+	if exists(sPath) then
+		local hFile = io.open(sPath, "r")
+		local tLines = {}
+		local nIteration = 1
+		local sLine = hFile:read()
+		while sLine ~= nil do
+			tLines[nIteration] = sLine
+			sLine = hFile:read()
+			nIteration = nIteration + 1
+		end
+		hFile:close()
+		return tLines
+	end
+	return {}
+end
+
+function readLine(sPath, nLine) -- Returns the line nLine of the specified file as a string
+	if exists(sPath) then
+		local tLines = readToTable(sPath)
+		return tLines[nLine]
+	end
+	return ""
+end
+
+function readAllText(sPath) -- Returns all the text in the specified file as a string
+	if exists(sPath) then
+		local hFile = io.open(sPath, "r")
+		return hFile:read("*a")
+	end
+	return ""
+end
+
+function fWrite(sPath, sText) -- Writes the given text in the file specified, overwriting all previous text
+	local hFile = io.open(sPath, "w")
+	hFile:write(sText)
+	hFile:close()
+end
+
+function fWriteFromTable(sPath, tTable) -- Writes each index of the given table to a new line of the specified file, overwriting all previous text
+	local sText = ""
+	for n = 1, #tTable do
+		sText = sText .. tTable[n] .. "\n"
+	end
+	fWrite(sPath, sText)
+end
+
+function fWriteAtStart(sPath, sText) -- Writes the given text at the start of the file specified
+	local _sText = readAllText(sPath)
+	fWrite(sPath, sText .. "\n" .. _sText)
+end
+
+function fWriteAtStartFromTable(sPath, tTable) -- Writes each index of the given table to a new line at the start of the specified file
+	local sText = ""
+	for n = 1, #tTable do
+		sText = sText .. tTable[n] .. "\n"
+	end
+	fWriteAtStart(sPath, sText)
+end
+
+function fAppend(sPath, sText) -- Writes the given text at the end of the file specified
+	local hFile = io.open(sPath, "a")
+	hFile:write(sText .. "\n")
+	hFile:close()
+end
+
+function fAppendFromTable(sPath, tTable) -- Writes each index of the given table to a new line at the end of the specified file
+	local sText = ""
+	for n = 1, #tTable do
+		sText = sText .. tTable[n] .. "\n"
+	end
+	fAppend(sPath, sText)
+end
+
+function replaceLine(sPath, nLine, sText) -- Replaces the line nLine of the specified file with the given text
+	local tLines = readToTable(sPath)
+	tLines[nLine] = sText
+	fWriteFromTable(sPath, tLines)
+end

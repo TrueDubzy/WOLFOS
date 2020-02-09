@@ -1,0 +1,7 @@
+--[[Copyright (C) 2012 James Chapman (aka: Toxic Wolf / toxicwolf)
+WolfOS, and all of its variations (WolfNB, WolfDB, WolfTC) are produced by toxicwolf (toxic.wolf@hotmail.co.uk).
+Please ask for permission before attempting to redistribute any code relating to WolfOS or any of its variations, IN ANY FORM.
+Special thanks to Wesley van Loon (aka: King Tamotsu / KingTamotsu) for all his ideas and help with designing the Operating System. ]]--
+
+-- Wolf Network Interface Library
+

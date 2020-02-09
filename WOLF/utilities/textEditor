@@ -1,0 +1,328 @@
+--[[Copyright (C) 2012 James Chapman (aka: Toxic Wolf / toxicwolf)
+WolfOS, and all of its variations (WolfNB, WolfDB, WolfTC) are produced by toxicwolf (toxic.wolf@hotmail.co.uk).
+Please ask for permission before attempting to redistribute any code relating to WolfOS or any of its variations, IN ANY FORM.
+Special thanks to Wesley van Loon (aka: King Tamotsu / KingTamotsu) for all his ideas and help with designing the Operating System. ]]--
+
+function os.pullEvent()
+	local sEvent, p1, p2, p3, p4, p5 = os.pullEventRaw()
+	if sEvent == "terminate" then
+	end
+	return sEvent, p1, p2, p3, p4, p5
+end
+
+local tArgs = {...}
+local sPath = tArgs[1]
+
+if sPath ~= nil and fs.isDir( sPath ) then
+	error( "cannot edit a directory" )
+	return
+end
+
+local sProgram = "Text Editor"
+
+local w,h = term.getSize()
+local x,y = 1,1
+local scrollX, scrollY = 0,0
+
+local bMenu = false
+local nMenuItem = 1
+
+local sStatus = ""
+local tLines = {}
+
+local function load()
+	tLines = {}
+	if sPath ~= nil then
+		tLines = WFCI.readToTable(sPath)
+	end
+	if tLines[1] == nil then
+		table.insert( tLines, "" )
+	end
+end
+
+local function save()
+	WFCI.fWriteFromTable(sPath, tLines)
+	return true
+end
+
+local function redrawText()
+	for y=1,h-1 do
+		term.setCursorPos( 1 - scrollX, y )
+		term.clearLine()
+
+		local sLine = tLines[ y + scrollY ]
+		if sLine ~= nil then
+			term.write( sLine )
+		end
+	end
+	term.setCursorPos( x - scrollX, y - scrollY )
+end
+
+local function redrawLine()
+	local sLine = tLines[y]
+	term.setCursorPos( 1 - scrollX, y - scrollY )
+	term.clearLine()
+	term.write( sLine )
+	term.setCursorPos( x - scrollX, y - scrollY )
+end
+
+local tMenuItems = { "Save", "Return" }
+
+local function redrawMenu()
+    term.setCursorPos( 1, h )
+	term.clearLine()
+
+	if not bMenu then
+		term.write( sStatus )
+	else
+		for n,sItem in ipairs( tMenuItems ) do
+			if n == nMenuItem then
+				term.write( ">"..sItem.."<" )
+			else
+				term.write( " "..sItem.." " )
+			end
+		end
+	end
+    term.setCursorPos( x - scrollX, y - scrollY )
+end
+
+local function setStatus( _sText )
+	sStatus = _sText
+	redrawMenu()
+end
+
+local function setCursor( x, y )
+	local screenX = x - scrollX
+	local screenY = y - scrollY
+	
+	local bRedraw = false
+	if screenX < 1 then
+		scrollX = x - 1
+		screenX = 1
+		bRedraw = true
+	elseif screenX > w then
+		scrollX = x - w
+		screenX = w
+		bRedraw = true
+	end
+	
+	if screenY < 1 then
+		scrollY = y - 1
+		screenY = 1
+		bRedraw = true
+	elseif screenY > h-1 then
+		scrollY = y - (h-1)
+		screenY = h-1
+		bRedraw = true
+	end
+	
+	if bRedraw then
+		redrawText()
+	end
+	term.setCursorPos( screenX, screenY )
+end
+
+local function load()
+	tLines = {}
+	if sPath ~= nil then
+		tLines = WFCI.readToTable(sPath)
+	end
+	if tLines[1] == nil then
+		table.insert( tLines, "" )
+	end
+end
+
+local function save()
+	if sPath == nil then
+		WAPI.clear(sProgram, true)
+		WAPI.slowPrint("Enter desired file path:")
+		print()
+		WAPI.slowWrite("> ")
+		_sPath = read()
+		if WAPI.getUserType == "admin" then
+			sPath = _sPath
+		else
+			sPath = "/WOLF/data/users/" .. WAPI.getUID() .. _sPath
+		end
+		redrawText()
+		redrawMenu()
+	end
+	WFCI.fWriteFromTable(sPath, tLines)
+	return true
+end
+
+load()
+
+term.clear()
+term.setCursorPos(x,y)
+term.setCursorBlink( true )
+
+redrawText()
+setStatus( "Ctrl to access menu" )
+
+local bRunning = true
+local tMenuFunctions = {
+	["Return"] = function()
+		bRunning = false
+	end,
+	["Save"] = function()
+		if save() then
+			setStatus( "File saved" )
+		else
+			setStatus( "Save failed" )
+		end
+	end,
+}
+
+local function doMenuItem( _n )
+	local fnMenu = tMenuFunctions[ tMenuItems[_n] ]
+	if fnMenu then
+		fnMenu()
+	end
+
+	bMenu = false
+	term.setCursorBlink( true )
+	redrawMenu()
+end
+
+while bRunning do
+  local sEvent, param = os.pullEvent()
+  if sEvent == "key" then
+    if param == 200 then
+		-- Up
+		if not bMenu then
+			-- Move cursor up
+			if y > 1 then
+				y = y - 1
+				x = math.min( x, string.len( tLines[y] ) + 1 )
+				setCursor( x, y )
+			end
+		end
+		
+	elseif param == 208 then
+		-- Down
+		if not bMenu then
+			-- Move cursor down
+			if y < #tLines then
+				y = y + 1
+				x = math.min( x, string.len( tLines[y] ) + 1 )
+				setCursor( x, y )
+			end
+		end
+	
+	elseif param == 203 then
+		-- Left
+		if not bMenu then
+			-- Move cursor left
+			if x > 1 then
+				x = x - 1
+				setCursor( x, y )
+			end
+		else
+			-- Move menu left
+			nMenuItem = nMenuItem - 1
+			if nMenuItem < 1 then
+				nMenuItem = #tMenuItems
+			end
+			redrawMenu()
+		end
+			
+		
+	elseif param == 205 then
+		-- Right
+		if not bMenu then
+			-- Move cursor right
+   		 	if x < string.len( tLines[y] ) + 1 then
+				x = x + 1
+				setCursor( x, y )
+		  	end
+		else
+			-- Move menu right
+			nMenuItem = nMenuItem + 1
+		  	if nMenuItem > #tMenuItems then
+				nMenuItem = 1
+		  	end
+		  	redrawMenu()
+		end
+		
+	elseif param == 14 then
+		-- Backspace
+		if not bMenu then
+   		 	if x > 1 then
+				-- Remove character
+				local sLine = tLines[y]
+				tLines[y] = string.sub(sLine,1,x-2) .. string.sub(sLine,x)
+				redrawLine()
+		
+				x = x - 1
+				setCursor( x, y )
+			
+			elseif y > 1 then
+				-- Remove newline
+				local sPrevLen = string.len( tLines[y-1] )
+				tLines[y-1] = tLines[y-1] .. tLines[y]
+				table.remove( tLines, y )
+				redrawText()
+			
+				x = sPrevLen + 1
+				y = y - 1
+				setCursor( x, y )
+		  	end
+		end
+		
+	elseif param == 28 then
+		-- Enter
+		if not bMenu then
+			-- Newline
+			local sLine = tLines[y]
+			tLines[y] = string.sub(sLine,1,x-1)
+			table.insert( tLines, y+1, string.sub(sLine,x) )
+			redrawText()
+		
+			x = 1
+			y = y + 1
+			setCursor( x, y )		
+			
+		else
+			-- Menu selection
+			doMenuItem( nMenuItem )
+		end
+		
+	elseif param == 29 then
+		-- Menu toggle
+		bMenu = not bMenu
+		if bMenu then
+			term.setCursorBlink( false )
+			nMenuItem = 1
+		else
+			term.setCursorBlink( true )
+		end
+		redrawMenu()
+	
+	end
+		
+  elseif sEvent == "char" then
+	if not bMenu then
+    	-- Input text
+		local sLine = tLines[y]
+		tLines[y] = string.sub(sLine,1,x-1) .. param .. string.sub(sLine,x)
+		redrawLine()
+	
+		x = x + string.len( param )
+		setCursor( x, y )
+	
+	else
+		-- Select menu items
+		for n,sMenuItem in ipairs( tMenuItems ) do
+			if string.lower(string.sub(sMenuItem,1,1)) == string.lower(param) then
+				doMenuItem( n )
+				break
+			end
+		end
+	end
+  end
+end
+
+term.clear()
+term.setCursorBlink( false )
+term.setCursorPos( 1, 1 )

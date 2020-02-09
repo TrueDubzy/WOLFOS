@@ -1,0 +1,703 @@
+--[[Copyright (C) 2012 James Chapman (aka: Toxic Wolf / toxicwolf)
+WolfOS, and all of its variations (WolfNB, WolfDB, WolfTC) are produced by toxicwolf (toxic.wolf@hotmail.co.uk).
+Please ask for permission before attempting to redistribute any code relating to WolfOS or any of its variations, IN ANY FORM.
+Special thanks to Wesley van Loon (aka: King Tamotsu / KingTamotsu) for all his ideas and help with designing the Operating System. ]]--
+
+-- Wolf Application Programming Interface
+
+function getVersion()
+	local sVersion = WFCI.readLine("/WOLF/data/os.dat", 1)
+	return sVersion
+end
+
+sVersion = getVersion()
+tValidSides = {}
+tValidSides[1] = "top"
+tValidSides[2] = "bottom"
+tValidSides[3] = "front"
+tValidSides[4] = "back"
+tValidSides[5] = "left"
+tValidSides[6] = "right"
+
+function getMountPath(sDrive)
+	sMountPath = disk.getMountPath(sDrive)
+	if sMountPath ~= nil then
+		return sMountPath
+	end
+	return ""
+end
+
+function getLocalMode()
+	if globalLocalMode == nil then
+		globalLocalMode = WFCI.readLine("/WOLF/data/os.dat", 2)
+	end
+	if globalLocalMode == "true" then
+		return true
+	end
+	return false
+end
+
+function writeLocalMode(bLocalMode)
+	if bLocalMode == true then
+		WFCI.replaceLine("/WOLF/data/os.dat", 2, "true")
+	elseif bLocalMode == false then
+		WFCI.replaceLine("/WOLF/data/os.dat", 2, "false")
+	end
+	globalLocalMode = nil
+end
+
+function getPrimaryDrive()
+	if globalPrimaryDrive == nil then
+		globalPrimaryDrive = WFCI.readLine("/WOLF/data/os.dat", 3)
+	end
+	if globalPrimaryDrive ~= "/" then
+		return globalPrimaryDrive
+	end
+	return nil
+end
+
+function writePrimaryDrive(sPrimaryDrive)
+	for nSide = 1, 6 do
+		if sPrimaryDrive == tValidSides[nSide] then
+			WFCI.replaceLine("/WOLF/data/os.dat", 3, sPrimaryDrive)
+			globalPrimaryDrive = nil
+		end
+	end
+end
+
+function getModemSide()
+	if globalModemSide == nil then
+		globalModemSide = WFCI.readLine("/WOLF/data/os.dat", 4)
+	end
+	if globalModemSide ~= "/" then
+		return globalModemSide
+	end
+	return nil
+end
+
+function writeModemSide(sModemSide)
+	for nSide = 1, 6 do
+		if sModemSide == tValidSides[nSide] then
+			WFCI.replaceLine("/WOLF/data/os.dat", 4, sModemSide)
+			globalModemSide = nil
+		end
+	end
+end
+
+function getMonitorSide()
+	if globalMonitorSide == nil then
+		globalMonitorSide = WFCI.readLine("/WOLF/data/os.dat", 5)
+	end
+	if globalMonitorSide ~= "/" then
+		return globalMonitorSide
+	end
+	return nil
+end
+
+function writeMonitorSide(sMonitorSide)
+	for nSide = 1, 6 do
+		if sMonitorSide == tValidSides[nSide] then
+			WFCI.replaceLine("/WOLF/data/os.dat", 5, sMonitorSide)
+			globalMonitorSide = nil
+		end
+	end
+end
+
+function getSlowPrint()
+	local sLocalMode = getLocalMode()
+	if globalSlowPrint == nil then
+		if sLocalMode == true then
+			globalSlowPrint = WFCI.readLine("/WOLF/data/os.dat", 6)
+		elseif sLocalMode == false then
+			local sPrimaryDrive = getPrimaryDrive()
+			local sMountPath = getMountPath(sPrimaryDrive)
+			globalSlowPrint = WFCI.readLine("/" .. sMountPath .. "/WOLF/data/data.dat", 2)
+		end
+	end
+	if globalSlowPrint == "true" then
+		return true
+	end
+	return false
+end
+
+function writeSlowPrint(bSlowPrint)
+	local sLocalMode = getLocalMode()
+	if sLocalMode == true then
+		if bSlowPrint == true then
+			WFCI.replaceLine("/WOLF/data/os.dat", 6, "true")
+		elseif bSlowPrint == false then
+			WFCI.replaceLine("/WOLF/data/os.dat", 6, "false")
+		end
+	elseif sLocalMode == false then
+		local sPrimaryDrive = getPrimaryDrive()
+		local sMountPath = getMountPath(sPrimaryDrive)
+		if bSlowPrint == true then
+			WFCI.replaceLine("/" .. sMountPath .. "/WOLF/data/data.dat", 2, "true")
+		elseif bSlowPrint == false then
+			WFCI.replaceLine("/" .. sMountPath .. "/WOLF/data/data.dat", 2, "false")
+		end
+	end
+	globalSlowPrint = nil
+end
+
+function resetSlowPrint()
+	globalSlowPrint = nil
+end
+
+function getUserID()
+	local sPrimaryDrive = getPrimaryDrive()
+	local sMountPath = getMountPath(sPrimaryDrive)
+	local sLocalMode = getLocalMode()
+	if sLocalMode == true then
+		sUserID = os.getComputerLabel()
+		if sUserID == nil or sUserID == "" then
+			sUserID = "Local User"
+		end
+		return sUserID
+	elseif sLocalMode == false then
+		if disk.isPresent(sPrimaryDrive) and WFCI.exists("/" .. sMountPath .. "/WOLF/data/passcode.dat") then
+			sUserID = disk.getLabel(sPrimaryDrive)
+			return sUserID
+		end
+	end
+	return nil
+end
+
+function getPasscode()
+	local sPrimaryDrive = getPrimaryDrive()
+	local sMountPath = getMountPath(sPrimaryDrive)
+	if disk.isPresent(sPrimaryDrive) and WFCI.exists("/" .. sMountPath .. "/WOLF/data/passcode.dat") then
+		sPasscode = WFCI.readAllText("/" .. sMountPath .. "/WOLF/data/passcode.dat")
+		return sPasscode
+	else
+		sPasscode = WFCI.readAllText("/WOLF/data/passcode.dat")
+		return sPasscode
+	end
+	return nil
+end
+
+function getLoginID()
+	local sUserID = getUserID()
+	local sPasscode = getPasscode()
+	if sUserID ~= nil and sPasscode ~= nil then
+		return sUserID, sPasscode
+	end
+	return nil
+end
+
+function getUID()
+	if getLocalMode() == true then
+		return "00000000"
+	else
+		local sPrimaryDrive = getPrimaryDrive()
+		local sMountPath = getMountPath(sPrimaryDrive)
+		local sUID = WFCI.readLine("/" .. sMountPath .. "/WOLF/data/data.dat", 1)
+		return sUID
+	end
+end
+
+function getUserType()
+	local sLocalMode = getLocalMode()
+	if sLocalMode == true then
+		return "admin"
+	else
+		local sUID = getUID()
+		local tUIDs = WFCI.readToTable("/WOLF/data/admins.dat")
+		for n = 1, #tUIDs do
+			if sUID == tUIDs[n] then
+				return "admin"
+			end
+		end
+	end
+	return "user"
+end
+
+function getRoot()
+	if getUserType() == "user" then
+		sRoot = "/WOLF/data/users/" .. getUID()
+		return sRoot
+	end
+	return "/"
+end
+
+function backOneDir(sPath)
+	nNextSlashPos = 1
+	repeat
+		nNextSlashPos = string.find(sPath, "/", nNextSlashPos + 1)
+		if nNextSlashPos ~= nil then
+			nLastSlashPos = nNextSlashPos
+		end
+	until nNextSlashPos == nil
+	if nLastSlashPos ~= nil and sPath ~= getRoot() then
+		sNewPath = string.sub(sPath, 1, nLastSlashPos - 1)
+	else
+		sNewPath = getRoot()
+	end
+	return sNewPath
+end
+
+function generateUID()
+	local sUID = ""
+	_t = {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z"}
+	
+	for nChar = 1, 8 do
+		if math.random(0, 1) == 0 then
+			sUID = sUID .. _t[math.random(1, 10)]
+		else
+			sUID = sUID .. _t[math.random(11, 36)]
+		end
+	end
+	
+	return sUID
+end
+
+function fastWrite(sString, xPos, yPos)
+	local a, b = term.getCursorPos()
+	local nWidth, nHeight = term.getSize()
+	local sText = tostring(sString)
+	
+	if xPos == "left" then
+		a1 = 1
+	elseif xPos == "centre" then
+		a1 = math.floor(nWidth / 2) - math.floor(sText:len() / 2) + 1
+	elseif xPos == "right" then
+		a1 = nWidth - sText:len() + 1
+	elseif type(xPos) == "number" then
+		a1 = xPos
+	else
+		a1 = a
+	end
+	
+	if yPos == "top" then
+		b1 = 1
+	elseif yPos == "centre" then
+		b1 = math.floor(nHeight / 2)
+	elseif yPos == "bottom" then
+		b1 = nHeight
+	elseif type(yPos) == "number" then
+		b1 = yPos
+	else
+		b1 = b
+	end
+	
+	term.setCursorPos(a1, b1)
+	term.write(sText)
+end
+
+function fastPrint(sString, xPos, yPos)
+	fastWrite(sString, xPos, yPos)
+	print()
+end
+
+function slowWrite(sString, bSleep, xPos, yPos)
+	local sText = tostring(sString)
+	local nWidth, nHeight = term.getSize()
+	local sSlowPrint = getSlowPrint()
+	local a, b = term.getCursorPos()
+	
+	if bSleep ~= false then bSleep = true end
+	
+	if xPos == "left" then
+		a1 = 1
+	elseif xPos == "centre" then
+		a1 = math.floor(nWidth / 2) - math.floor(sText:len() / 2) + 1
+	elseif xPos == "right" then
+		a1 = nWidth - sText:len() + 1
+	elseif type(xPos) == "number" then
+		a1 = xPos
+	else
+		a1 = a
+	end
+	
+	if yPos == "top" then
+		b1 = 1
+	elseif yPos == "centre" then
+		b1 = math.floor(nHeight / 2)
+	elseif yPos == "bottom" then
+		b1 = nHeight
+	elseif type(yPos) == "number" then
+		b1 = yPos
+	else
+		b1 = b
+	end
+	
+	term.setCursorPos(a1, b1)
+	
+	if sSlowPrint == true then
+		for n = 1, string.len(sText) do
+			term.write(string.sub(sText, n, n))
+			sleep(0.01)
+		end
+		if bSleep == true then sleep(1) end
+	else
+		fastWrite(sText)
+		if bSleep == true then sleep(1.5) end
+	end
+end
+
+function slowPrint(sString, xPos, yPos)
+	slowWrite(sString, xPos, yPos)
+	print()
+end
+
+function clear(sProgram, bProgramStartup)
+	bProgramStartup = bProgramStartup or false
+	
+	term.clear()
+	local nWidth, nHeight = term.getSize()
+	local nClientID = os.getComputerID()
+	local nServerID = nil
+	
+	if getLocalMode() == false and getUserID() == false then
+		noUser()
+	end
+	
+	fastWrite("+" .. string.rep("-", nWidth - 2) .. "+", 1, 2)
+	
+	if bProgramStartup == true then
+		slowWrite(sProgram, false, "centre", 1)
+	else
+		fastWrite(sProgram, "centre", 1)
+	end
+	term.setCursorPos(1, 4)
+end
+
+function noUser()
+	resetSlowPrint()
+	clear("Startup Menu")
+	slowPrint("User Account disk connection lost...")
+	writeLocalMode(true)
+	os.run({}, "/WOLF/startupMenu")
+end
+
+function login()
+	os.run({}, "/WOLF/login")
+end
+
+function logout(sProgram)
+	clear(sProgram)
+	for nSide = 1, 6 do
+		disk.stopAudio(tValidSides[nSide])
+	end
+	slowPrint("Logging out...")
+	writeLocalMode(true)
+	resetSlowPrint()
+	os.run({}, "/WOLF/startupMenu")
+end
+
+local function getCentreY()
+	local nWidth, nHeight = term.getSize()
+	local y = math.floor(nHeight / 2)
+	return y
+end
+
+function shutdown()
+	writeLocalMode(true)
+	
+	for nSide = 1, 6 do
+		disk.stopAudio(tValidSides[nSide])
+	end
+	
+	term.clear()
+	WAPI.fastPrint("Shutting down " .. sVersion:sub(1, 6), "centre", "centre")
+	WAPI.fastPrint("Please wait...", "centre")
+	WAPI.fastWrite("WOLF Technologies", "right", "bottom")
+	
+	sleep(3)
+	os.shutdown()
+end
+
+function reboot()
+	writeLocalMode(true)
+	
+	for nSide = 1, 6 do
+		disk.stopAudio(tValidSides[nSide])
+	end
+	
+	term.clear()
+	WAPI.fastPrint("Rebooting " .. sVersion:sub(1, 6), "centre", "centre")
+	WAPI.fastPrint("Please wait... ", "centre")
+	WAPI.fastWrite("WOLF Technologies", "right", "bottom")
+	
+	sleep(3)
+	term.setCursorPos(1, 1)
+	term.clear()
+	os.reboot()
+end
+
+--[[function displayTextFile(sPath, sProgram)
+	local sAll = WFCI.readAllText(sPath)
+	local nWidth, nHeight = term.getSize()
+	local nMaxDisplay = nHeight - 3
+	local nScroll = 0
+	local nPosY = 1
+	local tLines = {}
+	
+	local i = 1
+	repeat
+		tLines[i] = ""
+		for n = 1, #sAll do
+			tLines[i] = string.sub(sAll, n, n)
+		end
+		i = i + 1
+	until i > #sAll
+	
+	local nScrollMax = #tLines - nMaxDisplay
+end ]]--
+
+local function createMenu(tChoices, sMenuTitle, sProgram)
+	local nWidth, nHeight = term.getSize()
+	local nMaxDisplay = nHeight - 5
+	local nScroll = 0
+	local nScrollMax = #tChoices - nMaxDisplay
+	local nSelection = 1
+	local nPosY = 1
+	clear(sProgram)
+	slowPrint(sMenuTitle, false)
+	fastPrint("")
+	
+	for nLine = 1, #tChoices do
+		local sLine = "  "
+		if nPosY == nLine + nScroll then
+			sLine = "> "
+		end
+		if nLine == 1 and nScroll > 0 then
+			sLine = "^"
+		elseif nLine == nMaxDisplay then
+			sLine = "v"
+		else
+			sLine = sLine .. tChoices[nLine + nScroll]
+		end
+		
+		slowWrite(sLine, false, 1, nLine + 5)
+		
+		if nLine + 1 > nMaxDisplay then
+			break
+		end
+	end
+end
+
+function runMenu(tChoices, sMenuTitle, sProgram, bReturn)
+	local bReturn = bReturn or false
+	
+	if bReturn == true then
+		table.insert(tChoices, "")
+		table.insert(tChoices, "Return")
+	end
+	
+	createMenu(tChoices, sMenuTitle, sProgram)
+	
+	tOptions = {}
+	local i = 1
+	for n = 1, #tChoices do
+		if tChoices[n] ~= "" then
+			tOptions[i] = tChoices[n]
+			i = i + 1
+		end
+	end
+	
+	local nWidth, nHeight = term.getSize()
+	local nMaxDisplay = nHeight - 5
+	local nScroll = 0
+	local nScrollMax = #tChoices - nMaxDisplay
+	local nSelection = 1
+	local nPosY = 1
+	local bMenuLoop = true
+	
+	while bMenuLoop == true do
+		clear(sProgram)
+		fastPrint(sMenuTitle)
+		fastPrint("")
+		
+		for nLine = 1, nMaxDisplay do
+			local sLine = "  "
+			if nPosY == nLine then
+				sLine = "> "
+			end
+			if nLine == 1 and nScroll > 0 then
+				sLine = "^"
+			elseif nLine == nMaxDisplay and nScrollMax > 0 then
+				sLine = "v"
+			else
+				sLine = sLine .. tChoices[nLine + nScroll]
+			end
+			
+			fastWrite(sLine, 1, nLine + 5)
+			
+			if nLine + 1 > #tChoices then
+				break
+			end
+		end
+	
+		local sEvent, nKey = os.pullEvent("key")
+		
+		if nKey == 200 then
+			if tOptions[nSelection - 1] then
+				nSelection = nSelection - 1
+				local _loop = true
+				repeat
+					if nPosY == 2 and nScroll > 0 then
+						nScroll = nScroll - 1
+						nScrollMax = nScrollMax + 1
+					elseif nPosY > 1 then
+						nPosY = nPosY - 1
+					end
+					if tChoices[nPosY + nScroll] ~= "" then
+						_loop = false
+					end
+				until _loop == false
+			end
+		elseif nKey == 208 then
+			if tOptions[nSelection + 1] then
+				nSelection = nSelection + 1
+				local _loop = true
+				repeat
+					if nPosY == nMaxDisplay - 1 and nScrollMax > 0 then
+						nScroll = nScroll + 1
+						nScrollMax = nScrollMax - 1
+					elseif nPosY < nMaxDisplay then
+						nPosY = nPosY + 1
+					end
+					if tChoices[nPosY + nScroll] ~= "" then
+						_loop = false
+					end
+				until _loop == false
+			end
+		elseif nKey == 199 or nKey == 201 then
+			local _loop = true
+			repeat
+				if tOptions[nSelection - 1] then
+					nSelection = nSelection - 1
+					local _i = true
+					repeat
+						if nPosY == 2 and nScroll > 0 then
+							nScroll = nScroll - 1
+							nScrollMax = nScrollMax + 1
+						elseif nPosY > 1 then
+							nPosY = nPosY - 1
+						end
+						if tChoices[nPosY + nScroll] ~= "" then
+							_i = false
+						end
+					until _i == false
+				else
+					_loop = false
+				end
+			until _loop == false
+		elseif nKey == 207 or nKey == 209 then
+			local _loop = true
+			repeat
+				if tOptions[nSelection + 1] then
+					nSelection = nSelection + 1
+					local _i = true
+					repeat
+						if nPosY == nMaxDisplay - 1 and nScrollMax > 0 then
+							nScroll = nScroll + 1
+							nScrollMax = nScrollMax - 1
+						elseif nPosY < nMaxDisplay then
+							nPosY = nPosY + 1
+						end
+						if tChoices[nPosY + nScroll] ~= "" then
+							_i = false
+						end
+					until _i == false
+				else
+					_loop = false
+				end
+			until _loop == false
+		elseif nKey == 28 then
+			if nSelection == #tOptions and bReturn == true then
+				bMenuLoop = false
+				return 0
+			elseif tOptions[nSelection] then
+				bMenuLoop = false
+				return nSelection
+			end
+		elseif nKey == 14 then
+			if bReturn == true then
+				bMenuLoop = false
+				return 0
+			end
+		end
+	end
+end
+
+function runChoiceMenu(sQuestion)
+	local nWidth, nHeight = term.getSize()
+	
+	if (string.len(sQuestion) + 4) > nWidth then
+		slowPrint(string.sub(sQuestion, 1, nWidth - 8) .. "...? Y|N", false)
+	else
+		slowPrint(sQuestion .. " Y|N", false)
+	end
+	repeat
+		sEvent, sChar = os.pullEvent("char")
+	until string.lower(sChar) == "y" or string.lower(sChar) == "n"
+	if sChar == "y" then
+		return true
+	end
+	return false
+end
+
+function runInputMenu(sTitle, bHidden, bConfirm)
+	local x, y = term.getCursorPos()
+	local bHidden = bHidden or false
+	local bConfirm = bConfirm or false
+	local _s = nil
+	local _loop = false
+	
+	if bHidden == true then
+		_s = "*"
+	end
+
+	repeat
+		term.setCursorPos(x, y)
+		term.clearLine()
+		slowPrint(sTitle, false, x, y)
+		fastPrint("")
+		term.clearLine()
+		slowWrite("> ", false)
+		sInput = read(_s)
+		
+		if bConfirm == true then
+			term.setCursorPos(x, y)
+			term.clearLine()
+			slowPrint("Confirmation:", false, x, y)
+			fastPrint("")
+			term.clearLine()
+			slowWrite("> ", false)
+			local sConfirmation = read(_s)
+			if sConfirmation ~= sInput then
+				_loop = true
+			else
+				_loop = false
+			end
+		end
+	until _loop == false
+	return sInput
+end
+
+function list(sDir, bFilesOnly)
+	local bFilesOnly = bFilesOnly or false
+	local tAll = fs.list(sDir)
+	local tFiles = {}
+	local tDirs = {}
+	
+	for n, sItem in pairs(tAll) do
+		if string.sub(sItem, 1, 1) ~= "." then
+			local sPath = fs.combine(sDir, sItem)
+			if fs.isDir(sPath) then
+				table.insert(tDirs, sItem)
+			else
+				table.insert(tFiles, sItem)
+			end
+		end
+	end
+	table.sort(tDirs)
+	table.sort(tFiles)
+	
+	if bFilesOnly == true then
+		return tFiles
+	end
+	return tDirs, tFiles
+end

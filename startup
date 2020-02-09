@@ -1,0 +1,382 @@
+--[[Copyright (C) 2012 James Chapman (aka: Toxic Wolf / toxicwolf)
+WolfOS, and all of its variations (WolfNB, WolfDB, WolfTC) are produced by toxicwolf (toxic.wolf@hotmail.co.uk).
+Please ask for permission before attempting to redistribute any code relating to WolfOS or any of its variations, IN ANY FORM.
+Special thanks to Wesley van Loon (aka: King Tamotsu / KingTamotsu) for all his ideas and help with designing the Operating System (1.3.0+). ]]--
+
+function os.pullEvent()
+	local sEvent, p1, p2, p3, p4, p5 = os.pullEventRaw()
+	if sEvent == "terminate" then
+	end
+	return sEvent, p1, p2, p3, p4, p5
+end
+
+local sWolfOSVersionClient = "1.3.3"
+local sWolfOSVersionServer = "0.1.0"
+local sWolfNBVersionClient = "0.5.0"
+local sWolfNBVersionServer = "0.0.0"
+local sWolfDBVersion = "0.0.0"
+local sWolfTCVersionClient = "0.0.0"
+local sWolfTCVersionServer = "0.0.0"
+
+function getCentreX(sText)
+local nWidth = term.getSize()
+local x = math.floor(nWidth / 2) - math.floor(string.len(sText) / 2)
+return x
+end
+
+function getCentreY()
+local nWidth, nHeight = term.getSize()
+local y = math.floor(nHeight / 2)
+return y
+end
+
+function getRight(sText)
+local nWidth = term.getSize()
+local x = nWidth - string.len(sText)
+return x + 1
+end
+
+function runMenu(tChoices, sMenuTitle)
+	local nSelection = 0
+	local bLoop = true
+	
+	while bLoop == true do
+		term.clear()
+		term.setCursorPos(1, 1)
+		print(sMenuTitle)
+		print()
+	
+		for nLine = 0, #tChoices do
+			local sLine = "  "
+			if nSelection == nLine then
+				sLine = "> "
+			end
+			sLine = sLine .. tChoices[nLine]
+			print(sLine)
+		end
+		
+		local nWidth, nHeight = term.getSize()
+		local y = nHeight
+		local x = getRight("WOLF Technologies")
+		term.setCursorPos(x, y)
+		term.write("WOLF Technologies")
+		
+		local sEvent, nKey = os.pullEvent("key")
+		
+		if nKey == 200 then
+			if tChoices[nSelection - 1] then
+				nSelection = nSelection - 1
+			end
+		elseif nKey == 208 then
+			if tChoices[nSelection + 1] then
+				nSelection = nSelection + 1
+			end
+		elseif nKey == 28 then
+			if tChoices[nSelection] then
+				bLoop = false
+				return nSelection
+			end
+		end
+	end
+end
+
+function menu()
+	repeat
+		if nMenuNum == 0 then
+			tChoices = {}
+			tActions = {}
+			tChoices[0] = "WolfOS"
+			--tChoices[1] = "WolfNB"
+			tChoices[1] = "Cancel Installation"
+			tActions[0] = function() nMenuNum = 1 end
+			--tActions[1] = function() nMenuNum = 3 end
+			tActions[1] = function()
+				term.clear()
+				local x = getCentreX("Cancelling Installation")
+				local y = getCentreY()
+				term.setCursorPos(x, y)
+				term.write("Cancelling Installation")
+				local x = getCentreX("Please wait...")
+				term.setCursorPos(x, y + 1)
+				term.write("Please wait...")
+				local nWidth, nHeight = term.getSize()
+				local y = nHeight
+				local x = getRight("WOLF Technologies")
+				term.setCursorPos(x, y)
+				term.write("WOLF Technologies")
+				sleep(3)
+				os.shutdown()
+			end
+			local nSelection = runMenu(tChoices, "Select software package:")
+			tActions[nSelection]()
+		elseif nMenuNum == 1 then
+			tChoices = {}
+			tActions = {}
+			tChoices[0] = "WolfOS Client " .. sWolfOSVersionClient
+			--tChoices[1] = "WolfOS Server " .. sWolfOSVersionServer
+			tChoices[1] = "Return"
+			tActions[0] = function() nMenuNum = 2 sVersion = "WolfOS Client" end
+			--tActions[1] = function() nMenuNum = 2 sVersion = "WolfOS Server" end
+			tActions[1] = function() nMenuNum = 0 end
+			local nSelection = runMenu(tChoices, "Select a WolfOS version:")
+			tActions[nSelection]()
+		elseif nMenuNum == 2 then
+			tChoices = {}
+			tActions = {}
+			tChoices[0] = "Install"
+			tChoices[1] = "Skip"
+			tChoices[2] = "Return"
+			tActions[0] = function() bMenuLoop = false bMusicPlayer = true end
+			tActions[1] = function() bMenuLoop = false bMusicPlayer = false end
+			tActions[2] = function() nMenuNum = 1 end
+			local nSelection = runMenu(tChoices, "Music Player:")
+			tActions[nSelection]()
+		elseif nMenuNum == 3 then
+			tChoices = {}
+			tActions = {}
+			tChoices[0] = "WolfNB Client " .. sWolfNBVersionClient
+			tChoices[1] = "WolfNB Server " .. sWolfNBVersionServer
+			tChoices[2] = "Return"
+			tActions[0] = function() bMenuLoop = false sVersion = "WolfNB Client" end
+			tActions[1] = function() bMenuLoop = false sVersion = "WolfNB Server" end
+			tActions[2] = function() nMenuNum = 0 end
+			local nSelection = runMenu(tChoices, "Select a WolfNB version:")
+			tActions[nSelection]()
+		end
+	until bMenuLoop == false
+end
+
+-- WolfOS Technologies
+
+term.clear()
+local x = getCentreX("Initialising Installation")
+local y = getCentreY()
+term.setCursorPos(x, y)
+print("Initialising Installation")
+local x = getCentreX("Please wait...")
+term.setCursorPos(x, y + 1)
+print("Please wait...")
+
+local nWidth, nHeight = term.getSize()
+local y = nHeight
+local x = getRight("WOLF Technologies")
+term.setCursorPos(x, y)
+term.write("WOLF Technologies")
+
+sleep(3)
+
+bMenuLoop = true
+nMenuNum = 0
+tChoices = {}
+tActions = {}
+menu()
+term.clear()
+local nWidth, nHeight = term.getSize()
+local y = nHeight
+local x = getRight("WOLF Technologies")
+term.setCursorPos(x, y)
+term.write("WOLF Technologies")
+term.setCursorPos(1, 1)
+
+-- Set path to install from on disk
+
+if sVersion == "WolfOS Client" then
+	sVersionNum = sWolfOSVersionClient
+	sCopyPath = "/disk/WOLF/WolfOS/Client"
+	print("Installing WolfOS Client " .. sWolfOSVersionClient .. "...")
+elseif sVersion == "WolfOS Server" then
+	sVersionNum = sWolfOSVersionServer
+	sCopyPath = "disk/WOLF/WolfOS/Server"
+	print("Installing WolfOS Server " .. sWolfOSVersionServer .. "...")
+elseif sVersion == "WolfNB Client" then
+	sVersionNum = sWolfNBVersionClient
+	sCopyPath = "/disk/WOLF/WolfNB/Client"
+	print("Installing WolfNB Client " .. sWolfNBVersionClient .. "...")
+elseif sVersion == "WolfNB Server" then
+	sVersionNum = sWolfNBVersionServer
+	sCopyPath = "/disk/WOLF/WolfNB/Server"
+	print("Installing WolfNB Server " .. sWolfNBVersionServer .. "...")
+elseif sVersion == "WolfDB" then
+	sVersionNum = sWolfDBVersion
+	sCopyPath = "/disk/WOLF/WolfDB"
+	print("Installing WolfDB " .. sWolfDBVersion .. "...")
+elseif sVersion == "WolfTC Client" then
+	sVersionNum = sWolfTCVersionClient
+	sCopyPath = "/disk/WOLF/WolfTC/Client"
+	print("Installing WolfTC Client " .. sWolfTCVersionClient .. "...")
+elseif sVersion == "WolfTC Server" then
+	sVersionNum = sWolfTCVersionServer
+	sCopyPath = "/disk/WOLF/WolfTC/Server"
+	print("Installing WolfTC Client " .. sWolfTCVersionServer .. "...")
+end
+
+print()
+
+-- Create Directories
+
+tDirs = {}
+tDirs[1] = "/WOLF"
+tDirs[2] = "/WOLF/APIS"
+tDirs[3] = "/WOLF/programs"
+tDirs[4] = "/WOLF/programs/utilities"
+tDirs[5] = "/WOLF/utilities"
+tDirs[6] = "/WOLF/data"
+tDirs[7] = "/WOLF/data/users"
+
+if sVersion:sub(1, 6) == "WolfNB" then
+	table.insert(tDirs, "/WOLF/data/news")
+end
+
+print("Creating directories...")
+print()
+
+for n = 1, #tDirs do
+	if not fs.isDir(tDirs[n]) then fs.makeDir(tDirs[n]) end
+	term.setCursorPos(1, 5)
+	term.clearLine()
+	term.write(tDirs[n])
+	fs.makeDir(tDirs[n])
+	sleep(0.1)
+end
+
+-- Copy core OS files
+
+term.setCursorPos(1, 3)
+term.clearLine()
+print("Copying files...")
+print()
+
+term.setCursorPos(1, 5)
+term.clearLine()
+term.write("/startup")
+if fs.exists("/startup") then fs.delete("/startup") end
+fs.copy("/disk/WOLF/startup", "/startup")
+sleep(0.1)
+
+tAPIs = {}
+tAPIs[1] = "WFCI"
+tAPIs[2] = "WPCI"
+tAPIs[3] = "WAPI"
+tAPIs[4] = "WNIL"
+
+for n = 1, #tAPIs do
+	term.setCursorPos(1, 5)
+	term.clearLine()
+	term.write("/WOLF/APIS/" .. tAPIs[n])
+	if fs.exists("/WOLF/APIS/" .. tAPIs[n]) then fs.delete("/WOLF/APIS/" .. tAPIs[n]) end
+	fs.copy("/disk/WOLF/APIS/" .. tAPIs[n], "/WOLF/APIS/" .. tAPIs[n])
+	sleep(0.1)
+end
+
+os.loadAPI("/WOLF/APIS/WFCI")
+
+tFiles = {}
+tFiles[1] = "/startupMenu"
+tFiles[2] = "/login"
+tFiles[3] = "/controlPanel"
+tFiles[4] = "/utilities/textEditor"
+tFiles[5] = "/data/easter_egg.txt"
+
+tFiles[7] = "/mainMenu"
+if sVersion == "WolfOS Client" then
+	table.insert(tFiles, "/programMenu")
+	table.insert(tFiles, "/utilityMenu")
+	table.insert(tFiles, "/programs/utilities/diskManager")
+	table.insert(tFiles, "/programs/utilities/fileBrowser")
+	table.insert(tFiles, "/programs/utilities/textEditor")
+elseif sVersion == "WolfNB Client" then
+	table.insert(tFiles, "/newsBoardMenu")
+	table.insert(tFiles, "/newsBoard")
+end
+
+for n = 1, #tFiles do
+	if n > 5 then _sPath = sCopyPath .. tFiles[n] else _sPath = "/disk/WOLF" .. tFiles[n] end
+	sPath = "/WOLF" .. tFiles[n]
+	term.setCursorPos(1, 5)
+	term.clearLine()
+	term.write(sPath)
+	if WFCI.exists(sPath) then fs.delete(sPath) end
+	fs.copy(_sPath, sPath)
+	sleep(0.1)
+end
+
+tData = {}
+tData[1] = "/"
+tData[2] = "true"
+tData[3] = "/"
+tData[4] = "/"
+tData[5] = "/"
+tData[6] = "false"
+if not WFCI.exists("/WOLF/data/os.dat") then
+	WFCI.fWriteFromTable("/WOLF/data/os.dat", tData)
+end
+
+WFCI.replaceLine("/WOLF/data/os.dat", 1, tostring(sVersion .. " " .. sVersionNum))
+
+if not WFCI.exists("/WOLF/data/admins.dat") then
+	WFCI.fWrite("/WOLF/data/admins.dat", "")
+end
+
+WFCI.fWrite("/WOLF/data/passcode.dat", "")
+
+if sVersion == "WolfNB Client" then
+	WFCI.fWrite("/WOLF/data/news/location.dat", "")
+end
+
+-- Copy native program files
+
+if bMusicPlayer == true then
+	term.setCursorPos(1, 5)
+	term.clearLine()
+	term.write("/WOLF/programs/musicPlayer")
+	if WFCI.exists("/WOLF/programs/musicPlayer") then fs.delete("/WOLF/programs/musicPlayer") end
+	fs.copy(sCopyPath .. "/programs/musicPlayer", "/WOLF/programs/musicPlayer")
+	sleep(0.1)
+else
+	if WFCI.exists("/WOLF/programs/musicPlayer") then fs.delete("/WOLF/programs/musicPlayer") end	
+end
+
+-- Finish installation
+
+term.clear()
+local nWidth, nHeight = term.getSize()
+local y = nHeight
+local x = getRight("WOLF Technologies")
+term.setCursorPos(x, y)
+term.write("WOLF Technologies")
+term.setCursorPos(1, 1)
+print(sVersion .. " " .. sVersionNum .. " installation complete.")
+sleep(0.1)
+print()
+print("Press any key to continue...")
+os.pullEvent("key")
+
+term.clear()
+local nWidth, nHeight = term.getSize()
+local y = nHeight
+local x = getRight("WOLF Technologies")
+term.setCursorPos(x, y)
+term.write("WOLF Technologies")
+term.setCursorPos(1, 1)
+
+for nSide = 1, 6 do
+	if nSide == 1 then sSide = "top"
+	elseif nSide == 2 then sSide = "bottom"
+	elseif nSide == 3 then sSide = "front"
+	elseif nSide == 4 then sSide = "back"
+	elseif nSide == 5 then sSide = "left"
+	elseif nSide == 6 then sSide = "right" end
+	disk.eject(sSide)
+ end
+ 
+local x = getCentreX("Finishing Installation")
+local y = getCentreY()
+term.setCursorPos(x, y)
+term.write("Finishing Installation")
+local x = getCentreX("Please wait...")
+term.setCursorPos(x, y + 1)
+term.write("Please wait...")
+sleep(3)
+term.setCursorPos(1, 1)
+term.clear()
+os.reboot()

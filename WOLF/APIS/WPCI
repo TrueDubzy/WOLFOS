@@ -1,0 +1,327 @@
+--[[Copyright (C) 2012 James Chapman (aka: Toxic Wolf / toxicwolf)
+WolfOS, and all of its variations (WolfNB, WolfDB, WolfTC) are produced by toxicwolf (toxic.wolf@hotmail.co.uk).
+Please ask for permission before attempting to redistribute any code relating to WolfOS or any of its variations, IN ANY FORM.
+Special thanks to Wesley van Loon (aka: King Tamotsu / KingTamotsu) for all his ideas and help with designing the Operating System. ]]--
+
+-- Wolf Peripheral Control Index
+
+tValidSides = {}
+tValidSides[1] = "top"
+tValidSides[2] = "bottom"
+tValidSides[3] = "front"
+tValidSides[4] = "back"
+tValidSides[5] = "left"
+tValidSides[6] = "right"
+
+function isPeripheralPresent(sSide)
+	if peripheral.isPresent(sSide) then
+		return true
+	end
+	
+	return false
+end
+
+function isDrivePresent(sSide)
+	if peripheral.getType(sSide) == "drive" then
+		return true
+	end
+	
+	return false
+end
+
+function isMonitorPresent(sSide)
+	if peripheral.getType(sSide) == "monitor" then
+		return true
+	end
+	
+	return false
+end
+
+function isModemPresent(sSide)
+	if peripheral.getType(sSide) == "modem" then
+		return true
+	end
+	
+	return false
+end
+
+function isComputerPresent(sSide)
+	if peripheral.getType(sSide) == "computer" then
+		return true
+	end
+	
+	return false
+end
+
+function isTurtlePresent(sSide)
+	if peripheral.getType(sSide) == "turtle" then
+		return true
+	end
+	
+	return false
+end
+
+function getPeripheralType(sSide)
+	if isPeripheralPresent(sSide) then
+		local sType = peripheral.getType(sSide)
+		return sType
+	end
+	
+	return nil
+end
+
+function getAllPeripherals()
+	tSides = {}
+	tTypes = {}
+	for n = 1, #tValidSides do
+		if isPeripheralPresent(tValidSides[n]) then
+			table.insert(tSides, tValidSides[n])
+			table.insert(tTypes, getPeripheralType(tValidSides[n]))
+		end
+	end
+	
+	return tSides, tTypes
+end
+
+function assignHandle(sSide)
+	if isPeripheralPresent(sSide) then
+		local hHandle = peripheral.wrap(sSide)
+		return hHandle
+	end
+	
+	return nil
+end
+
+function clearScreen(hPeripheral)
+	local hPeripheral = hPeripheral or term
+	hPeripheral.clear()
+end
+
+function clearLine(hPeripheral, y)
+	local hPeripheral = hPeripheral or term
+	if y == nil then
+		_, y = hPeripheral.getCursorPos()
+	end
+	
+	hPeripheral.setCursorPos(1, y)
+	hPeripheral.clearLine()
+end
+
+function resetCursorPos(hPeripheral)
+	local hPeripheral = hPeripheral or term
+	hPeripheral.setCursorPos(1, 1)
+end
+
+function writeToScreen(sString, sAlign, hPeripheral)
+	local hPeripheral = hPeripheral or term
+	local a, b = hPeripheral.getCursorPos()
+	local nWidth, nHeight = hPeripheral.getSize()
+	
+	if sAlign == "left" then
+		a1 = 1
+	elseif sAlign == "centre" then
+		a1 = math.floor(nWidth / 2) - math.floor(string.len(sString) / 2)
+	elseif sAlign == "right" then
+		a1 = nWidth - string.len(sString) + 1
+	else
+		a1 = a
+	end
+	
+	hPeripheral.setCursorPos(a1, b)
+	hPeripheral.write(tostring(sString))
+end
+
+function printToScreen(sString, sAlign, hPeripheral)
+	writeToScreen(sString, sAlign, hPeripheral)
+	local x, y = hPeripheral.getCursorPos()
+	hPeripheral.setCursorPos(1, y + 1)
+end
+
+function slowWriteToScreen(sString, sAlign, hPeripheral, nRate)
+	local hPeripheral = hPeripheral or term
+	
+	local nRate = nRate or 20
+	if nRate < 0 then
+		error("rate must be positive")
+	end
+	
+	local nSleep = 1 / nRate
+	local a, b = hPeripheral.getCursorPos()
+	local nWidth, nHeight = hPeripheral.getSize()
+	
+	if sAlign == "left" then
+		a1 = 1
+	elseif sAlign == "centre" then
+		a1 = math.floor(nWidth / 2) - math.floor(string.len(sString) / 2)
+	elseif sAlign == "right" then
+		a1 = nWidth - string.len(sString) + 1
+	else
+		a1 = a
+	end
+	
+	for n = 1, string.len(sString) do
+		hPeripheral.setCursorPos(a1, b)
+		hPeripheral.write(string.sub(sString, 1, n))
+		sleep(nSleep)
+	end
+end
+
+function slowPrintToScreen(sString, sAlign, hPeripheral, nRate)
+	slowWriteToScreen(sString, sAlign, hPeripheral, nRate)
+	local x, y = hPeripheral.getCursorPos()
+	hPeripheral.setCursorPos(1, y + 1)
+end
+
+function writeVerticalToScreen(sString, hPeripheral)
+	local hPeripheral = hPeripheral or term
+	local x, y = hPeripheral.getCursorPos()
+	for n = 1, string.len(sString) do
+		hPeripheral.write(string.sub(sString, n, n))
+		hPeripheral.setCursorPos(x, y + n)
+	end
+end
+
+function slowWriteVerticalToScreen(sString, hPeripheral, nRate)
+	local hPeripheral = hPeripheral or term
+	local nRate = nRate or 20
+	if nRate < 0 then
+		error("rate must be positive")
+	end
+	
+	local nSleep = 1 / nRate
+	local x, y = hPeripheral.getCursorPos()
+	
+	for n = 1, string.len(sString) do
+		hPeripheral.write(string.sub(sString, n, n))
+		hPeripheral.setCursorPos(x, y + n)
+		sleep(nSleep)
+	end
+end
+
+function scrollTextHorizontal(sString, nRepeats, hPeripheral, sDirection, nRate)
+	local nRepeats = nRepeats or 1
+	local hPeripheral = hPeripheral or term
+	
+	local sDirection = sDirection or "left"
+	if sDirection ~= "left" and sDirection ~= "right" then
+		error("direction must be \"left\" or \"right\"")
+	end
+	
+	local nRate = nRate or 10
+	if nRate < 0 then
+		error("rate must be positive")
+	end
+	
+	local nSleep = 1 / nRate
+	local nWidth, nHeight = hPeripheral.getSize()
+	local x, y = hPeripheral.getCursorPos()
+	local sText = ""
+	
+	local sText = string.rep(" ", nWidth) .. sString .. string.rep(" ", nWidth)
+	
+	local nCount = 0
+	
+	while nCount < nRepeats do
+		if sDirection == "left" then
+			for n = 1, string.len(sText) - nWidth + 1 do
+				local sDisplay = string.sub(sText, n, n + nWidth)
+				hPeripheral.clearLine()
+				hPeripheral.setCursorPos(1, y)
+				hPeripheral.write(sDisplay)
+				sleep(nSleep)		
+			end
+		else
+			for n = string.len(sText) - nWidth + 1, 1, -1 do
+				local sDisplay = string.sub(sText, n, n + nWidth)
+				hPeripheral.clearLine()
+				hPeripheral.setCursorPos(1, y)
+				hPeripheral.write(sDisplay)
+				sleep(nSleep)	
+			end
+		end
+		nCount = nCount + 1
+	end
+end
+
+function scrollTextVertical(sString, nRepeats, hPeripheral, sDirection, nRate)
+	local nRepeats = nRepeats or 1
+	local hPeripheral = hPeripheral or term
+	
+	local sDirection = sDirection or "up"
+	if sDirection ~= "up" and sDirection ~= "down" then
+		error("direction must be \"up\" or \"down\"")
+	end
+	
+	local nRate = nRate or 10
+	if nRate < 0 then
+		error("rate must be positive")
+	end
+	
+	local nSleep = 1 / nRate
+	local nWidth, nHeight = hPeripheral.getSize()
+	local x, y = hPeripheral.getCursorPos()
+	local sText = ""
+	
+	local sText = string.rep(" ", nHeight) .. sString .. string.rep(" ", nHeight)
+	
+	local nCount = 0
+	
+	while nCount < nRepeats do
+		if sDirection == "up" then
+			for n = 1, string.len(sText) - nHeight + 1 do
+				local sDisplay = string.sub(sText, n, n + nHeight)
+				hPeripheral.setCursorPos(x, 1)
+				writeVerticalToScreen(sDisplay, hPeripheral)
+				sleep(nSleep)		
+			end
+		else
+			for n = string.len(sText) - nHeight + 1, 1, -1 do
+				local sDisplay = string.sub(sText, n, n + nHeight)
+				hPeripheral.setCursorPos(x, 1)
+				writeVerticalToScreen(sDisplay, hPeripheral)
+				sleep(nSleep)	
+			end
+		end
+		nCount = nCount + 1
+	end
+end
+
+function flashText(sString, nRepeats, hPeripheral, sDirection, nRate)
+	local nRepeats = nRepeats or 1
+	local hPeripheral = hPeripheral or term
+
+	local sDirection = sDirection or "horizontal"
+	if sDirection ~= "horizontal" and sDirection ~= "vertical" then
+		error("direction must be \"horizontal\" or \"vertical\"")
+	end
+	
+	local nRate = nRate or 10
+	if nRate < 0 then
+		error("rate must be positive")
+	end
+	
+	local x, y = hPeripheral.getCursorPos()
+	local nSleep = 1 / nRate
+	local nCount = 0
+	
+	while nCount ~= nRepeats do
+		hPeripheral.setCursorPos(x, y)
+		if sDirection == "horizontal" then
+			hPeripheral.write(sString)
+		else
+			writeVerticalToScreen(sString, hPeripheral)
+		end
+		
+		sleep(nSleep)
+		
+		hPeripheral.setCursorPos(x, y)
+		if sDirection == "horizontal" then
+			hPeripheral.write(string.rep(" ", string.len(sString)))
+		else
+			writeVerticalToScreen(string.rep(" ", string.len(sString)), hPeripheral)
+		end
+		
+		nCount = nCount + 1
+		sleep(nSleep)
+	end
+end

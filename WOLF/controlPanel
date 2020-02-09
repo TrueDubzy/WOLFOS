@@ -1,0 +1,685 @@
+--[[Copyright (C) 2012 James Chapman (aka: Toxic Wolf / toxicwolf)
+WolfOS, and all of its variations (WolfNB, WolfDB, WolfTC) are produced by toxicwolf (toxic.wolf@hotmail.co.uk).
+Please ask for permission before attempting to redistribute any code relating to WolfOS or any of its variations, IN ANY FORM.
+Special thanks to Wesley van Loon (aka: King Tamotsu / KingTamotsu) for all his ideas and help with designing the Operating System (1.3.0+). ]]--
+
+sProgram = "Control Panel"
+WAPI.clear(sProgram, true)
+
+function os.pullEvent()
+	local sEvent, p1, p2, p3, p4, p5 = os.pullEventRaw()
+	if sEvent == "terminate" then
+		term.setCursorBlink(false)
+		os.run({}, "/WOLF/mainMenu")
+	end
+	return sEvent, p1, p2, p3, p4, p5
+end
+
+function menu()
+	repeat
+		if nMenuNum == 0 then
+			tChoices = {}
+			tActions = {}
+			tChoices[1] = "System Information"
+			tChoices[2] = ""
+			tChoices[3] = "User Account Settings"
+			tChoices[4] = "System Settings"
+			
+			if WAPI.getUserType() == "admin" then
+				table.insert(tChoices, "")
+				table.insert(tChoices, "Exit to Shell")
+			end
+			
+			tActions[1] = function()
+				repeat
+					local sPrimaryDrive = WAPI.getPrimaryDrive()
+					local sModemPort = WAPI.getModemSide() or ""
+					local sMonitorPort = WAPI.getMonitorSide() or ""
+					local sUserType = WAPI.getUserType()
+					
+					t = {}
+					t[1] = "Version: " .. WAPI.getVersion()
+					t[2] = "Drive port: " .. string.upper(string.sub(sPrimaryDrive, 1, 1)) .. string.sub(sPrimaryDrive, 2)
+					t[3] = "Modem port: " .. string.upper(string.sub(sModemPort, 1, 1)) .. string.sub(sModemPort, 2)
+					t[4] = "Monitor port: " .. string.upper(string.sub(sMonitorPort, 1, 1)) .. string.sub(sMonitorPort, 2)
+					t[5] = "Computer ID#: " .. os.getComputerID()
+					t[6] = ""
+					t[7] = "Current user: " .. WAPI.getUserID()
+					t[8] = "Account type: " .. string.upper(string.sub(sUserType, 1, 1)) .. string.sub(sUserType, 2)
+					t[9] = "Unique ID#: " .. WAPI.getUID()
+					
+					local nSelection = WAPI.runMenu(t, "System Information:", sProgram, true)
+				until nSelection == 0
+			end
+			
+			tActions[2] = function() nMenuNum = 1 end
+			tActions[3] = function() nMenuNum = 2 end
+			
+			if WAPI.getUserType() == "admin" then
+				table.insert(tActions, function() bMenuLoop = false term.clear() term.setCursorPos(1, 1) end)
+			end
+			
+			tActions[0] = function() bMenuLoop = false os.run({}, "/WOLF/mainMenu") end
+			
+			local nSelection = WAPI.runMenu(tChoices, "Control Panel:", sProgram, true)
+			tActions[nSelection]()
+		elseif nMenuNum == 1 then
+			tChoices = {}
+			tActions = {}
+			
+			tChoices[1] = "Change User Account ID"
+			tChoices[2] = "Change Passcode"
+			tChoices[3] = ""
+			tChoices[4] = "Delete User Account"
+			
+			if WAPI.getUserType() == "admin" then
+				table.insert(tChoices, "Create User Account")
+				table.insert(tChoices, "Reset Local User Account")
+			end
+			
+			tActions[1] = function()
+				WAPI.clear(sProgram)
+				local sPrimaryDrive = WAPI.getPrimaryDrive()
+				local sPasscode = WAPI.getPasscode()
+				local bLocalMode = WAPI.getLocalMode()
+
+				local sInput = WAPI.runInputMenu("Please enter your passcode:", true)
+				if sInput == sPasscode then
+					WAPI.clear(sProgram)
+					local bChoice = WAPI.runChoiceMenu("Change current User Account ID?")
+					if bChoice == true then
+						WAPI.clear(sProgram)
+						WAPI.slowPrint("Changing current User Account ID...")
+						WAPI.clear(sProgram)
+						repeat
+							WAPI.clear(sProgram)
+							sNewUserID = WAPI.runInputMenu("Please enter desired User Account ID:", false, true)
+						until sNewUserID ~= ""
+						if bLocalMode == true then
+							os.setComputerLabel(sNewUserID)
+						else
+							disk.setLabel(sPrimaryDrive, sNewUserID)
+						end
+						WAPI.clear(sProgram)
+						WAPI.slowPrint("User Account ID changed successfully!")
+					else
+						WAPI.clear(sProgram)
+						WAPI.slowPrint("Operation cancelled.")
+					end
+				else
+					WAPI.clear(sProgram)
+					WAPI.slowPrint("Authentication failed!")
+				end
+			end
+			
+			tActions[2] = function()
+				WAPI.clear(sProgram)
+				local sPrimaryDrive = WAPI.getPrimaryDrive()
+				local sMountPath = WAPI.getMountPath(sPrimaryDrive)
+				local bLocalMode = WAPI.getLocalMode()
+				local sPasscode = WAPI.getPasscode()
+				
+				local sInput = WAPI.runInputMenu("Please enter your passcode:", true)
+				if sInput == sPasscode then
+					WAPI.clear(sProgram)
+					local bChoice = WAPI.runChoiceMenu("Change current Passcode?")
+					if bChoice == true then
+						WAPI.clear(sProgram)
+						WAPI.slowPrint("Changing current Passcode...")
+						WAPI.clear(sProgram)
+						repeat
+							WAPI.clear(sProgram)
+							sNewPasscode = WAPI.runInputMenu("Please enter desired passcode:", true, true)
+						until sNewPasscode ~= ""
+						if bLocalMode == true then
+							WFCI.fWrite("/WOLF/data/passcode.dat", sNewPasscode)
+						else
+							WFCI.fWrite(sMountPath .. "/WOLF/data/passcode.dat", sNewPasscode)
+						end
+						WAPI.clear(sProgram)
+						WAPI.slowPrint("Passcode changed successfully!")
+					else
+						WAPI.clear(sProgram)
+						WAPI.slowPrint("Operation cancelled.")
+					end
+				else
+					WAPI.clear(sProgram)
+					WAPI.slowPrint("Authentication failed!")
+				end
+			end
+			
+			tActions[3] = function()
+				WAPI.clear(sProgram)
+				local sPrimaryDrive = WAPI.getPrimaryDrive()
+				local sMountPath = WAPI.getMountPath(sPrimaryDrive)
+				local sPasscode = WAPI.getPasscode()
+				local bLocalMode = WAPI.getLocalMode()
+				if bLocalMode == false then
+					local sInput = WAPI.runInputMenu("Please enter your passcode:", true)
+					if sInput == sPasscode then
+						WAPI.clear(sProgram)
+						local bChoice = WAPI.runChoiceMenu("Delete current User Account?")
+						if bChoice == true then
+							bMenuLoop = false
+							WAPI.clear(sProgram)
+							WAPI.slowPrint("Deleting current User Account...")
+							WAPI.clear(sProgram)
+							
+							sUID = WAPI.getUID()
+							
+							if WAPI.getUserType() == "admin" then
+								local tUIDs = WFCI.readToTable("/WOLF/data/admins.dat")
+								for n = 1, #tUIDs do
+									if sUID == tUIDs[n] then
+										table.remove(tUIDs, n)
+										WFCI.fWriteFromTable("/WOLF/data/admins.dat", tUIDs)
+									end
+								end
+							end
+							
+							fs.delete("/WOLF/data/users/" .. sUID)
+							fs.delete(sMountPath .. "/WOLF")
+							disk.setLabel(sPrimaryDrive, "")
+							WAPI.slowPrint("User Account deleted successfully!")
+							WAPI.noUser()
+						else
+							WAPI.clear(sProgram)
+							WAPI.slowPrint("Operation cancelled.")
+						end
+					else
+						WAPI.clear(sProgram)
+						WAPI.slowPrint("Authentication failed!")
+					end
+				else
+					WAPI.slowPrint("Cannot delete Local User Account.")
+				end
+			end
+			
+			if WAPI.getUserType() == "admin" then
+				table.insert(tActions, function()
+					WAPI.clear(sProgram)
+					local sPrimaryDrive = WAPI.getPrimaryDrive()
+					local sMountPath = WAPI.getMountPath(sPrimaryDrive)
+					if disk.isPresent(sPrimaryDrive) then
+						if fs.list(sMountPath)[1] == nil then
+							WAPI.slowPrint("Empty disk located.")
+							
+							tChoices = {}
+							tChoices[1] = "Admin"
+							tChoices[2] = "User"
+							local nSelection = WAPI.runMenu(tChoices, "Select User Account Type:", sProgram)
+							sUserType = string.lower(tChoices[nSelection])
+							
+							repeat
+								WAPI.clear(sProgram)
+								sNewUserID = WAPI.runInputMenu("Please enter desired User Account ID:", false, true)
+							until sNewUserID ~= ""
+							repeat
+								WAPI.clear(sProgram)
+								sNewPasscode = WAPI.runInputMenu("Please enter desired passcode:", true, true)
+							until sNewPasscode ~= ""
+							WAPI.clear(sProgram)
+							WAPI.slowPrint("Creating User Account...")
+							disk.setLabel(sPrimaryDrive, sNewUserID)
+							fs.makeDir(sMountPath .. "/WOLF")
+							fs.makeDir(sMountPath .. "/WOLF/data")
+							
+							local sUID = WAPI.generateUID()
+							fs.makeDir("/WOLF/data/users/" .. sUID)
+							
+							tData = {}
+							tData[1] = sUID
+							tData[2] = "false"
+							WFCI.fWriteFromTable(sMountPath .. "/WOLF/data/data.dat", tData)
+							WFCI.fWrite(sMountPath .. "/WOLF/data/passcode.dat", sNewPasscode)
+							
+							if sUserType == "admin" then
+								WFCI.fAppend("/WOLF/data/admins.dat", sUID)
+							end
+							
+							WAPI.clear(sProgram)
+							WAPI.slowPrint("User Account created successfully!")
+						else
+							WAPI.slowPrint("No disk located.", 1, 3, false)
+							print()
+							WAPI.slowPrint("Enter empty disk.")
+						end
+					else
+						WAPI.slowPrint("No disk located.", 1, 3, false)
+						print()
+						WAPI.slowPrint("Enter empty disk.")
+					end
+				end)
+			
+				table.insert(tActions, function()
+					WAPI.clear(sProgram)
+					local sPrimaryDrive = WAPI.getPrimaryDrive()
+					local bLocalMode = WAPI.getLocalMode()
+					local sPasscode = WAPI.getPasscode()
+					
+					local sInput = WAPI.runInputMenu("Please enter your passcode:", true)
+					
+					if sInput == sPasscode then
+						WAPI.clear(sProgram)
+						bChoice = WAPI.runChoiceMenu("Reset Local User Account?")
+						if bChoice == true then
+							WAPI.clear(sProgram)
+							WAPI.slowPrint("Resetting Local User Account...")
+							WAPI.clear(sProgram)
+							WFCI.fWrite("/WOLF/data/passcode.dat", "")
+							os.setComputerLabel("")
+							WAPI.slowPrint("Local User Account reset successfully!")
+							if bLocalMode == true then
+								WAPI.logout(sProgram)
+							end
+						else
+							WAPI.clear(sProgram)
+							WAPI.slowPrint("Operation cancelled.")
+						end
+					else
+						WAPI.clear(sProgram)
+						WAPI.slowPrint("Authentication failed!")
+					end
+				end)
+			end
+			
+			tActions[0] = function() nMenuNum = 0 end
+			
+			local nSelection = WAPI.runMenu(tChoices, "User Account Settings:", sProgram, true)
+			tActions[nSelection]()
+		elseif nMenuNum == 2 then
+			tChoices = {}
+			tActions = {}
+			tChoices[1] = "Modem Settings"
+			tChoices[2] = "Monitor Settings"
+			tChoices[3] = ""
+			tChoices[4] = "Change Print Mode"
+			
+			if WAPI.getUserType() == "admin" then
+				table.insert(tChoices, "Change Primary Drive")
+				table.insert(tChoices, "")
+				table.insert(tChoices, "Update " .. string.sub(WAPI.getVersion(), 1, 6))
+				table.insert(tChoices, "Uninstall " .. string.sub(WAPI.getVersion(), 1, 6))
+			end
+			
+			tActions[1] = function() nMenuNum = 3 end
+			
+			tActions[2] = function() nMenuNum = 6 end
+			
+			tActions[3] = function()
+				WAPI.clear(sProgram)
+				local bSlowPrint = WAPI.getSlowPrint()
+				if bSlowPrint == true then
+					sCurrentMode = "slow"
+					sNewMode = "fast"
+					bNewSlowPrint = false
+				else
+					sCurrentMode = "fast"
+					sNewMode = "slow"
+					bNewSlowPrint = true
+				end
+				WAPI.slowPrint("Current print mode is " .. sCurrentMode .. ".", 1, 3, false)
+				print()
+				bChoice = WAPI.runChoiceMenu("Change print mode to " .. sNewMode .. "?")
+				if bChoice == true then
+					WAPI.clear(sProgram)
+					WAPI.writeSlowPrint(bNewSlowPrint)
+					WAPI.slowPrint("Print mode changed to " .. sNewMode .. ".")
+				else
+					WAPI.clear(sProgram)
+					WAPI.slowPrint("Operation cancelled.")
+				end
+			end
+			
+			if WAPI.getUserType() == "admin" then
+				table.insert(tActions, function() nMenuNum = 5 end)
+				
+				table.insert(tActions, function() end)
+				
+				table.insert(tActions, function()
+					WAPI.clear(sProgram)
+					local sPasscode = WAPI.getPasscode()
+
+					local sInput = WAPI.runInputMenu("Please enter your passcode:", true)
+
+					if sInput == sPasscode then
+						WAPI.clear(sProgram)
+						local bChoice = WAPI.runChoiceMenu("Uninstall WolfOS?")
+						if bChoice == true then
+							WAPI.clear(sProgram)
+							WAPI.slowPrint("Uninstalling WolfOS...")
+							fs.delete("/WOLF")
+							fs.delete("/startup")
+							term.clear()
+							term.setCursorPos(1, 1)
+							print("WolfOS uninstalled successfully!")
+							sleep(1.5)
+							os.reboot()
+						end
+					else
+						WAPI.clear(sProgram)
+						WAPI.slowPrint("Access denied!")
+					end				
+				end)
+			end
+			
+			tActions[0] = function() nMenuNum = 0 end
+			
+			local nSelection = WAPI.runMenu(tChoices, "System Settings:", sProgram, true)
+			tActions[nSelection]()
+		elseif nMenuNum == 3 then
+			tChoices = {}
+			tActions = {}
+			
+			if WAPI.getUserType() == "admin" then
+				table.insert(tChoices, "Change modem port")
+				table.insert(tChoices, "")
+			end
+			
+			table.insert(tChoices, "Turn modem on")
+			table.insert(tChoices, "Turn modem off")
+			
+			if WAPI.getUserType() == "admin" then
+				table.insert(tActions, function() nMenuNum = 4 end)
+			end
+			
+			table.insert(tActions, function()
+				local sModemSide = WAPI.getModemSide()
+				if sModemSide ~= nil then
+					WAPI.clear(sProgram)
+					WAPI.slowPrint("Modem on " .. sModemSide .. " side turned on.")
+					rednet.open(sModemSide)
+				else
+					nMenuNum = 4
+				end
+			end)
+			
+			table.insert(tActions, function()
+				local sModemSide = WAPI.getModemSide()
+				if sModemSide ~= nil then
+					WAPI.clear(sProgram)
+					WAPI.slowPrint("Modem on " .. sModemSide .. " side turned off.")
+					rednet.close(sModemSide)
+				else
+					nMenuNum = 4
+				end
+			end)
+			
+			tActions[0] = function() nMenuNum = 2 end
+			
+			local nSelection = WAPI.runMenu(tChoices, "Modem Settings:", sProgram, true)
+			tActions[nSelection]()
+		elseif nMenuNum == 4 then
+			tChoices = {}
+			tActions = {}
+			tChoices[1] = "Top"
+			tChoices[2] = "Bottom"
+			tChoices[3] = "Front"
+			tChoices[4] = "Back"
+			tChoices[5] = "Left"
+			tChoices[6] = "Right"
+			
+			tActions[1] = function()
+				local sModemSide = "top"
+				if peripheral.getType(sModemSide) == "modem" then
+					WAPI.writeModemSide(sModemSide)
+					WAPI.clear(sProgram)
+					WAPI.slowPrint("Modem port set to " .. sModemSide .. " side.")
+					nMenuNum = 3
+				end
+			end
+			
+			tActions[2] = function()
+				local sModemSide = "bottom"
+				if peripheral.getType(sModemSide) == "modem" then
+					WAPI.writeModemSide(sModemSide)
+					WAPI.clear(sProgram)
+					WAPI.slowPrint("Modem port set to " .. sModemSide .. " side.")
+					nMenuNum = 3
+				end
+			end
+			
+			tActions[3] = function()
+				local sModemSide = "front"
+				if peripheral.getType(sModemSide) == "modem" then
+					WAPI.writeModemSide(sModemSide)
+					WAPI.clear(sProgram)
+					WAPI.slowPrint("Modem port set to " .. sModemSide .. " side.")
+					nMenuNum = 3
+				end
+			end
+			
+			tActions[4] = function()
+				local sModemSide = "back"
+				if peripheral.getType(sModemSide) == "modem" then
+					WAPI.writeModemSide(sModemSide)
+					WAPI.clear(sProgram)
+					WAPI.slowPrint("Modem port set to " .. sModemSide .. " side.")
+					nMenuNum = 3
+				end
+			end
+			
+			tActions[5] = function()
+				local sModemSide = "left"
+				if peripheral.getType(sModemSide) == "modem" then
+					WAPI.writeModemSide(sModemSide)
+					WAPI.clear(sProgram)
+					WAPI.slowPrint("Modem port set to " .. sModemSide .. " side.")
+					nMenuNum = 3
+				end
+			end
+			
+			tActions[6] = function()
+				local sModemSide = "right"
+				if peripheral.getType(sModemSide) == "modem" then
+					WAPI.writeModemSide(sModemSide)
+					WAPI.clear(sProgram)
+					WAPI.slowPrint("Modem port set to " .. sModemSide .. " side.")
+					nMenuNum = 3
+				end
+			end
+			
+			tActions[0] = function() nMenuNum = 3 end
+			
+			local nSelection = WAPI.runMenu(tChoices, "Modem Port Settings:", sProgram, true)
+			tActions[nSelection]()
+		elseif nMenuNum == 5 then
+			tChoices = {}
+			tActions = {}
+			tChoices[1] = "Top"
+			tChoices[2] = "Bottom"
+			tChoices[3] = "Front"
+			tChoices[4] = "Back"
+			tChoices[5] = "Left"
+			tChoices[6] = "Right"
+			
+			tActions[1] = function()
+				local sPrimaryDrive = "top"
+				if peripheral.getType(sPrimaryDrive) == "drive" then
+					WAPI.writePrimaryDrive(sPrimaryDrive)
+					WAPI.clear(sProgram)
+					WAPI.slowPrint("Primary drive set to " .. sPrimaryDrive .. " side.")
+					nMenuNum = 2
+				end
+			end
+			
+			tActions[2] = function()
+				local sPrimaryDrive = "bottom"
+				if peripheral.getType(sPrimaryDrive) == "drive" then
+					WAPI.writePrimaryDrive(sPrimaryDrive)
+					WAPI.clear(sProgram)
+					WAPI.slowPrint("Primary drive set to " .. sPrimaryDrive .. " side.")
+					nMenuNum = 2
+				end
+			end
+			
+			tActions[3] = function()
+				local sPrimaryDrive = "front"
+				if peripheral.getType(sPrimaryDrive) == "drive" then
+					WAPI.writePrimaryDrive(sPrimaryDrive)
+					WAPI.clear(sProgram)
+					WAPI.slowPrint("Primary drive set to " .. sPrimaryDrive .. " side.")
+					nMenuNum = 2
+				end
+			end
+			
+			tActions[4] = function()
+				local sPrimaryDrive = "back"
+				if peripheral.getType(sPrimaryDrive) == "drive" then
+					WAPI.writePrimaryDrive(sPrimaryDrive)
+					WAPI.clear(sProgram)
+					WAPI.slowPrint("Primary drive set to " .. sPrimaryDrive .. " side.")
+					nMenuNum = 2
+				end
+			end
+			
+			tActions[5] = function()
+				local sPrimaryDrive = "left"
+				if peripheral.getType(sPrimaryDrive) == "drive" then
+					WAPI.writePrimaryDrive(sPrimaryDrive)
+					WAPI.clear(sProgram)
+					WAPI.slowPrint("Primary drive set to " .. sPrimaryDrive .. " side.")
+					nMenuNum = 2
+				end
+			end
+			
+			tActions[6] = function()
+				local sPrimaryDrive = "right"
+				if peripheral.getType(sPrimaryDrive) == "drive" then
+					WAPI.writePrimaryDrive(sPrimaryDrive)
+					WAPI.clear(sProgram)
+					WAPI.slowPrint("Primary drive set to " .. sPrimaryDrive .. " side.")
+					nMenuNum = 2
+				end
+			end
+			
+			tActions[0] = function() nMenuNum = 2 end
+			
+			local nSelection = WAPI.runMenu(tChoices, "Primary Drive Settings:", sProgram, true)
+			tActions[nSelection]()
+		elseif nMenuNum == 6 then
+			tChoices = {}
+			tActions = {}
+			
+			if WAPI.getUserType() == "admin" then
+				table.insert(tChoices, "Change monitor port")
+				table.insert(tActions, function() nMenuNum = 7 end)
+			end
+			
+			if string.sub(WAPI.getVersion(), 1, 13) == "WolfOS Client" then
+				table.insert(tChoices, "")
+				table.insert(tChoices, "Redirect to monitor")
+				table.insert(tActions, function()
+					local sMonitorSide = WAPI.getMonitorSide()
+					if sMonitorSide ~= nil then
+						WAPI.clear(sProgram)
+						WAPI.slowPrint("Redirected to monitor on " .. sMonitorSide .. " side.")
+						term.redirect(peripheral.wrap(sMonitorSide))
+					else
+						nMenuNum = 7
+					end
+				end)
+				
+				table.insert(tChoices, "Reset monitor output")
+				table.insert(tActions, function()
+					WAPI.clear(sProgram)
+					if term.syncScreens then term.syncScreens(false) end
+					term.restore()
+					WAPI.slowPrint("Reset monitor output.")
+				end)
+				
+				if term.syncScreens then
+					table.insert(tChoices, "Syncronize screens")
+					table.insert(tActions, function()
+						WAPI.clear(sProgram)
+						term.syncScreens(true)
+						WAPI.slowPrint("Syncronized all screens.")
+					end)
+				end
+			end
+			
+			tActions[0] = function() nMenuNum = 2 end
+			
+			local nSelection = WAPI.runMenu(tChoices, "Monitor Settings:", sProgram, true)
+			tActions[nSelection]()
+		elseif nMenuNum == 7 then
+			tChoices = {}
+			tActions = {}
+			tChoices[1] = "Top"
+			tChoices[2] = "Bottom"
+			tChoices[3] = "Front"
+			tChoices[4] = "Back"
+			tChoices[5] = "Left"
+			tChoices[6] = "Right"
+			
+			tActions[1] = function()
+				local sMonitorSide = "top"
+				if peripheral.getType(sMonitorSide) == "monitor" then
+					WAPI.writeMonitorSide(sMonitorSide)
+					WAPI.clear(sProgram)
+					WAPI.slowPrint("Monitor port set to " .. sMonitorSide .. " side.")
+					nMenuNum = 6
+				end
+			end
+			
+			tActions[2] = function()
+				local sMonitorSide = "bottom"
+				if peripheral.getType(sMonitorSide) == "monitor" then
+					WAPI.writeMonitorSide(sMonitorSide)
+					WAPI.clear(sProgram)
+					WAPI.slowPrint("Monitor port set to " .. sMonitorSide .. " side.")
+					nMenuNum = 6
+				end
+			end
+			
+			tActions[3] = function()
+				local sMonitorSide = "front"
+				if peripheral.getType(sMonitorSide) == "monitor" then
+					WAPI.writeMonitorSide(sMonitorSide)
+					WAPI.clear(sProgram)
+					WAPI.slowPrint("Monitor port set to " .. sMonitorSide .. " side.")
+					nMenuNum = 6
+				end
+			end
+			
+			tActions[4] = function()
+				local sMonitorSide = "back"
+				if peripheral.getType(sMonitorSide) == "monitor" then
+					WAPI.writeMonitorSide(sMonitorSide)
+					WAPI.clear(sProgram)
+					WAPI.slowPrint("Monitor port set to " .. sMonitorSide .. " side.")
+					nMenuNum = 6
+				end
+			end
+			
+			tActions[5] = function()
+				local sMonitorSide = "left"
+				if peripheral.getType(sMonitorSide) == "monitor" then
+					WAPI.writeMonitorSide(sMonitorSide)
+					WAPI.clear(sProgram)
+					WAPI.slowPrint("Monitor port set to " .. sMonitorSide .. " side.")
+					nMenuNum = 6
+				end
+			end
+			
+			tActions[6] = function()
+				local sMonitorSide = "right"
+				if peripheral.getType(sMonitorSide) == "monitor" then
+					WAPI.writeMonitorSide(sMonitorSide)
+					WAPI.clear(sProgram)
+					WAPI.slowPrint("Monitor port set to " .. sMonitorSide .. " side.")
+					nMenuNum = 6
+				end
+			end
+			
+			tActions[0] = function() nMenuNum = 6 end
+			
+			local nSelection = WAPI.runMenu(tChoices, "Primary Drive Settings:", sProgram, true)
+			tActions[nSelection]()
+		end
+	until bMenuLoop == false
+end
+
+bMenuLoop = true
+nMenuNum = 0
+menu()

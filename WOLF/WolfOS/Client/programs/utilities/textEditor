@@ -1,0 +1,134 @@
+--[[Copyright (C) 2012 James Chapman (aka: Toxic Wolf / toxicwolf)
+WolfOS, and all of its variations (WolfNB, WolfDB, WolfTC) are produced by toxicwolf (toxic.wolf@hotmail.co.uk).
+Please ask for permission before attempting to redistribute any code relating to WolfOS or any of its variations, IN ANY FORM.
+Special thanks to Wesley van Loon (aka: King Tamotsu / KingTamotsu) for all his ideas and help with designing the Operating System. ]]--
+
+sProgram = "Text Editor"
+WAPI.clear(sProgram, true)
+
+function os.pullEvent()
+	local sEvent, p1, p2, p3, p4, p5 = os.pullEventRaw()
+	if sEvent == "terminate" then
+		term.setCursorBlink(false)
+		os.run({}, "/WOLF/utilityMenu")
+	end
+	return sEvent, p1, p2, p3, p4, p5
+end
+
+function menu()
+	repeat
+		if nMenuNum == 0 then
+			tChoices = {}
+			tActions = {}
+			tChoices[1] = "New File"
+			tChoices[2] = "Open File"
+			
+			tActions[1] = function()
+				repeat
+					WAPI.clear(sProgram)
+					sName = WAPI.runInputMenu("Enter desired filename:")
+				until sName ~= nil
+				
+				local n = string.find(sName, ".", 1, true)
+				if n ~= nil then
+					sName = string.sub(sName, 1, n - 1)
+				end
+				
+				local sDir = WAPI.getRoot()
+				local _loop = true
+				repeat
+					local nOffset = 0
+					tChoices = {}
+					if sDir ~= WAPI.getRoot() then
+						table.insert(tChoices, ".")
+						table.insert(tChoices, "..")
+						table.insert(tChoices, "")
+						nOffset = 2
+					end
+					tDirs = WAPI.list(sDir)
+					for n = 1, #tDirs do
+						table.insert(tChoices, "/" .. tDirs[n])
+						if n == #tDirs then
+							table.insert(tChoices, "")
+						end
+					end
+					table.insert(tChoices, "Select current directory")
+					
+					local nSelection = WAPI.runMenu(tChoices, "Select a directory:", sProgram, true)
+					if nSelection == 0 then
+						_loop = false
+					elseif nOffset > 0 and nSelection == 1 then
+						sDir = WAPI.getRoot()
+					elseif nOffset > 0 and nSelection == 2 then
+						sDir = WAPI.backOneDir(sDir)
+					elseif nSelection - nOffset > #tDirs then
+						_loop = false
+						sPath = sDir
+						if sPath ~= "/" then
+							_ = "/"
+						else
+							_ = ""
+						end
+						local sFile = sPath .. _ .. sName .. ".txt"
+						os.run({}, "/WOLF/utilities/textEditor", sFile)
+					else
+						sDir = sDir .. "/" .. tDirs[nSelection - nOffset]
+					end
+				until _loop == false
+			end
+			
+			tActions[2] = function()
+				local sDir = WAPI.getRoot()
+				local _loop = true
+				
+				repeat
+					local nOffset = 0
+					tChoices = {}
+					_tFiles = {}
+					if sDir ~= WAPI.getRoot() then
+						table.insert(tChoices, ".")
+						table.insert(tChoices, "..")
+						table.insert(tChoices, "")
+						nOffset = 2
+					end
+					tDirs, tFiles = WAPI.list(sDir)
+					for n = 1, #tDirs do
+						table.insert(tChoices, "/" .. tDirs[n])
+					end
+					for n = 1, #tFiles do
+						if string.find(tFiles[n], ".txt") then
+							if n == 1 then
+								table.insert(tChoices, "")
+							end
+							table.insert(tChoices, tFiles[n])
+							table.insert(_tFiles, tFiles[n])
+						end
+					end
+					
+					local nSelection = WAPI.runMenu(tChoices, "Select a file:", sProgram, true)
+					if nSelection == 0 then
+						_loop = false
+					elseif nOffset > 0 and nSelection == 1 then
+						sDir = WAPI.getRoot()
+					elseif nOffset > 0 and nSelection == 2 then
+						sDir = WAPI.backOneDir(sDir)
+					elseif tDirs[nSelection - nOffset] and fs.isDir(sDir .. "/" .. tDirs[nSelection - nOffset]) then
+						sDir = sDir .. "/" .. tDirs[nSelection - nOffset]
+					else
+						_loop = false
+						os.run({}, "/WOLF/utilities/textEditor", sDir .. "/" .. _tFiles[nSelection - #tDirs - nOffset])
+					end
+				until _loop == false
+			end
+			
+			tActions[0] = function() bMenuLoop = false os.run({}, "/WOLF/utilityMenu") end
+			
+			local nSelection = WAPI.runMenu(tChoices, "Select an option:", sProgram, true)
+			tActions[nSelection]()
+		end
+	until bMenuLoop == false
+end
+
+bMenuLoop = true
+nMenuNum = 0
+menu()

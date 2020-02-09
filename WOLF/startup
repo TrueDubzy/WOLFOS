@@ -1,0 +1,121 @@
+--[[Copyright (C) 2012 James Chapman (aka: Toxic Wolf / toxicwolf)
+WolfOS, and all of its variations (WolfNB, WolfDB, WolfTC) are produced by toxicwolf (toxic.wolf@hotmail.co.uk).
+Please ask for permission before attempting to redistribute any code relating to WolfOS or any of its variations, IN ANY FORM.
+Special thanks to Wesley van Loon (aka: King Tamotsu / KingTamotsu) for all his ideas and help with designing the Operating System. ]]--
+
+os.loadAPI("/WOLF/APIS/WFCI")
+os.loadAPI("/WOLf/APIS/WPCI")
+os.loadAPI("/WOLF/APIS/WNIL")
+os.loadAPI("/WOLF/APIS/WAPI")
+
+sProgram = "Startup Menu"
+
+function os.pullEvent()
+	local sEvent, p1, p2, p3, p4, p5 = os.pullEventRaw()
+	if sEvent == "terminate" then
+	end
+	return sEvent, p1, p2, p3, p4, p5
+end
+
+function seekDrive()
+	WAPI.clear(sProgram)
+	WAPI.slowPrint("Searching for Primary drive...")
+	WAPI.clear(sProgram)
+	sPrimaryDrive = WAPI.getPrimaryDrive()
+	bLoop = false
+	if sPrimaryDrive == nil then
+		bLoop = true
+	elseif peripheral.getType(sPrimaryDrive) ~= "drive" then
+		bLoop = true
+	end
+	
+	while bLoop == true do
+		tChoices = {}
+		tChoices[1] = "Top"
+		tChoices[2] = "Bottom"
+		tChoices[3] = "Front"
+		tChoices[4] = "Back"
+		tChoices[5] = "Left"
+		tChoices[6] = "Right"
+		
+		tActions = {}
+		
+		tActions[1] = function()
+			sPrimaryDrive = "top"
+		end
+		
+		tActions[2] = function()
+			sPrimaryDrive = "bottom"
+		end
+		
+		tActions[3] = function()
+			sPrimaryDrive = "front"
+		end
+		
+		tActions[4] = function()
+			sPrimaryDrive = "back"
+		end
+		
+		tActions[5] = function()
+			sPrimaryDrive = "left"
+		end
+		
+		tActions[6] = function()
+			sPrimaryDrive = "right"
+		end
+		
+		local nSelection = WAPI.runMenu(tChoices, "Select Primary drive:", sProgram)
+		tActions[nSelection]()
+		
+		if peripheral.getType(sPrimaryDrive) == "drive" then
+			bLoop = false
+			WAPI.writePrimaryDrive(sPrimaryDrive)
+		end
+	end
+	WAPI.clear(sProgram)
+	WAPI.slowPrint("Primary drive located on " .. sPrimaryDrive .. " side.")
+end
+
+local function getCentreY()
+	local nWidth, nHeight = term.getSize()
+	local y = math.floor(nHeight / 2)
+	return y
+end
+
+term.clear()
+local x = 1
+local y = getCentreY()
+term.setCursorPos(x, y)
+WAPI.fastPrint("Initialising " .. WAPI.getVersion():sub(1, 6), "centre")
+WAPI.fastPrint("Please wait...", "centre")
+
+local nWidth, nHeight = term.getSize()
+local y = nHeight
+term.setCursorPos(x, y)
+WAPI.fastWrite("WOLF Technologies", "right")
+
+sleep(3)
+
+local sPath = ".:/rom/programs"
+if turtle then
+	sPath = sPath .. ":/rom/programs/turtle"
+else
+	sPath = sPath .. ":/rom/programs/computer"
+end
+shell.setPath(sPath)
+help.setPath("/rom/help")
+shell.setAlias("ls", "list")
+shell.setAlias("dir", "list")
+shell.setAlias("cp", "copy")
+shell.setAlias("mv", "move")
+shell.setAlias("rm", "delete")
+
+WAPI.writeLocalMode(true)
+
+term.clear()
+term.setCursorPos(1, 1)
+WAPI.slowPrint(sProgram, false, "centre")
+WAPI.slowPrint("+" .. string.rep("-", nWidth - 2) .. "+", false)
+
+seekDrive()
+os.run({}, "/WOLF/startupMenu")

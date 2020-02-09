@@ -1,0 +1,44 @@
+--[[Copyright (C) 2012 James Chapman (aka: Toxic Wolf / toxicwolf)
+WolfOS, and all of its variations (WolfNB, WolfDB, WolfTC) are produced by toxicwolf (toxic.wolf@hotmail.co.uk).
+Please ask for permission before attempting to redistribute any code relating to WolfOS or any of its variations, IN ANY FORM.
+Special thanks to Wesley van Loon (aka: King Tamotsu / KingTamotsu) for all his ideas and help with designing the Operating System. ]]--
+
+sProgram = "Main Menu"
+WAPI.clear(sProgram, true)
+
+function os.pullEvent()
+	local sEvent, p1, p2, p3, p4, p5 = os.pullEventRaw()
+	if sEvent == "terminate" then
+	end
+	return sEvent, p1, p2, p3, p4, p5
+end
+
+function menu()
+	repeat
+		if nMenuNum == 0 then
+			tChoices[1] = "Programs"
+			tChoices[2] = "Utilities"
+			tChoices[3] = "Control Panel"
+			tChoices[4] = ""
+			tChoices[5] = "Logout"
+			tChoices[6] = ""
+			tChoices[7] = "Reboot"
+			tChoices[8] = "Shutdown"
+			tActions[1] = function() bMenuLoop = false os.run({}, "/WOLF/programMenu") end
+			tActions[2] = function() bMenuLoop = false os.run({}, "/WOLF/utilityMenu") end
+			tActions[3] = function() bMenuLoop = false os.run({}, "/WOLF/controlPanel") end
+			tActions[4] = function() bMenuLoop = false WAPI.logout(sProgram) end
+			tActions[5] = function() bMenuLoop = false WAPI.reboot() end
+			tActions[6] = function() bMenuLoop = false WAPI.shutdown() end
+			local nSelection = WAPI.runMenu(tChoices, "Welcome " .. sUserID .. "!", sProgram)
+			tActions[nSelection]()
+		end
+	until bMenuLoop == false
+end
+
+bMenuLoop = true
+nMenuNum = 0
+tChoices = {}
+tActions = {}
+sUserID = WAPI.getUserID()
+menu()

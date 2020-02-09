@@ -1,0 +1,157 @@
+--[[Copyright (C) 2012 James Chapman (aka: Toxic Wolf / toxicwolf)
+WolfOS, and all of its variations (WolfNB, WolfDB, WolfTC) are produced by toxicwolf (toxic.wolf@hotmail.co.uk).
+Please ask for permission before attempting to redistribute any code relating to WolfOS or any of its variations, IN ANY FORM.
+Special thanks to Wesley van Loon (aka: King Tamotsu / KingTamotsu) for all his ideas and help with designing the Operating System. ]]--
+
+sProgram = "Disk Manager"
+WAPI.clear(sProgram, true)
+
+function os.pullEvent()
+	local sEvent, p1, p2, p3, p4, p5 = os.pullEventRaw()
+	if sEvent == "terminate" then
+		term.setCursorBlink(false)
+		os.run({}, "/WOLF/utilityMenu")
+	end
+	return sEvent, p1, p2, p3, p4, p5
+end
+
+function getSide(sTitle)
+	local sTitle = sTitle or "Select a drive:"
+	WAPI.clear(sProgram)
+	tChoices = {}
+	tActions = {}
+	tChoices[1] = "Top"
+	tChoices[2] = "Bottom"
+	tChoices[3] = "Front"
+	tChoices[4] = "Back"
+	tChoices[5] = "Left"
+	tChoices[6] = "Right"
+	tActions[1] = function() sSide = "top" end
+	tActions[2] = function() sSide = "bottom" end
+	tActions[3] = function() sSide = "front" end
+	tActions[4] = function() sSide = "back" end
+	tActions[5] = function() sSide = "left" end
+	tActions[6] = function() sSide = "right" end
+	local nSelection = WAPI.runMenu(tChoices, sTitle, sProgram)
+	tActions[nSelection]()
+	return sSide
+end
+
+function menu()
+	repeat
+		if nMenuNum == 0 then
+			tChoices = {}
+			tActions = {}
+			tChoices[1] = "Set Label"
+			tChoices[2] = "Clone Disk"
+			tChoices[3] = "Format Disk"
+			
+			tActions[1] = function()
+				sLabelSide = getSide()
+				local sMountPath = WAPI.getMountPath(sLabelSide)
+				bIsUserDisk = fs.isDir(sMountPath .. "/WOLF")
+				WAPI.clear(sProgram)
+				if disk.isPresent(sLabelSide) and disk.hasData(sLabelSide) then
+					if bIsUserDisk == false then
+						WAPI.clear(sProgram)
+						WAPI.slowPrint("Enter desired label:")
+						print()
+						WAPI.slowWrite("> ")
+						sLabel = read()
+						WAPI.clear(sProgram)
+						WAPI.slowPrint("Setting label...")
+						disk.setLabel(sLabelSide, sLabel)
+						sleep(1)
+						WAPI.clear(sProgram)
+						if sLabel ~= nil then
+							WAPI.slowPrint("Label set to \"" .. sLabel .. "\" in " .. sLabelSide .. " drive.")
+						else
+							WAPI.slowPrint("Label cleared in " .. sLabelSide .. " drive.")
+						end
+						sleep(1)
+					else
+						WAPI.slowPrint("Cannot edit User Account disks.")
+						sleep(1)
+					end
+				else
+					WAPI.slowPrint("No disk located.")
+					sleep(1)
+				end
+			end
+			
+			tActions[2] = function()
+				local sSRCSide = getSide("Select source drive:")
+				local sMountPathSRC = WAPI.getMountPath(sSRCSide)
+				repeat
+					sDSTSide = getSide("Select destination drive:")
+				until sDSTSide ~= sSRCSide
+				local sMountPathDST = WAPI.getMountPath(sDSTSide)
+				WAPI.clear(sProgram)
+				if disk.isPresent(sSRCSide) and disk.hasData(sSRCSide) and disk.isPresent(sDSTSide) and disk.hasData(sDSTSide) then
+					if fs.list(sMountPathDST)[1] == nil then
+						if not fs.isDir(sMountPathSRC .. "/WOLF") then
+							WAPI.clear(sProgram)
+							WAPI.slowPrint("Cloning disk...")
+							local tList = fs.list(sMountPathSRC)
+							for n = 1, #tList do
+								fs.copy(sMountPathSRC .. "/" .. tList[n], sMountPathDST .. "/" .. tList[n])
+							end
+							local sLabel = disk.getLabel(sSRCSide) or ""
+							disk.setLabel(sDSTSide, sLabel)
+							sleep(1)
+							WAPI.clear(sProgram)
+							WAPI.slowPrint("Disk in " .. sSRCSide .. " drive cloned to disk in " .. sDSTSide .. " drive.")
+							sleep(1)
+						else
+							WAPI.slowPrint("Cannot clone User Account disks.")
+							sleep(1)
+						end
+					else
+						WAPI.slowPrint("Enter empty destination disk.")
+						sleep(1)
+					end
+				else
+					WAPI.slowPrint("No disk located.")
+					sleep(1)
+				end
+			end
+			
+			tActions[3] = function()
+				local sFormatSide = getSide()
+				local sMountPath = WAPI.getMountPath(sFormatSide)
+				WAPI.clear(sProgram)
+				if disk.isPresent(sFormatSide) and disk.hasData(sFormatSide) then
+					if not fs.isDir(sMountPath .. "/WOLF") then
+						WAPI.slowPrint("Formatting disk...")
+						local tList = fs.list(sMountPath)
+						for n = 1, #tList do
+							fs.delete(sMountPath .. "/" .. tList[n])
+						end
+						disk.setLabel(sFormatSide, "")
+						sleep(1)
+						WAPI.clear(sProgram)
+						WAPI.slowPrint("Disk in " .. sFormatSide .. " drive formatted.")
+						sleep(1)
+					else 
+						WAPI.slowPrint("Cannot format User Account Disks.")
+						sleep(1)
+					end
+				else
+					WAPI.slowPrint("No disk located.")
+					sleep(1)
+				end
+			end
+			
+			tActions[0] = function() bMenuLoop = false os.run({}, "/WOLF/utilityMenu") end
+			
+			local nSelection = WAPI.runMenu(tChoices, "Disk Manager:", sProgram, true)
+			tActions[nSelection]()
+		end
+	until bMenuLoop == false
+end
+
+bMenuLoop = true
+nMenuNum = 0
+tChoices = {}
+tActions = {}
+menu()

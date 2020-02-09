@@ -1,0 +1,59 @@
+--[[Copyright (C) 2012 James Chapman (aka: Toxic Wolf / toxicwolf)
+WolfOS, and all of its variations (WolfNB, WolfDB, WolfTC) are produced by toxicwolf (toxic.wolf@hotmail.co.uk).
+Please ask for permission before attempting to redistribute any code relating to WolfOS or any of its variations, IN ANY FORM.
+Special thanks to Wesley van Loon (aka: King Tamotsu / KingTamotsu) for all his ideas and help with designing the Operating System. ]]--
+
+sProgram = "Startup Menu"
+
+function os.pullEvent()
+	local sEvent, p1, p2, p3, p4, p5 = os.pullEventRaw()
+	if sEvent == "terminate" then
+		term.setCursorBlink(false)
+		os.run({}, "/WOLF/startupMenu")
+	end
+	return sEvent, p1, p2, p3, p4, p5
+end
+
+WAPI.clear(sProgram)
+WAPI.slowPrint("Searching for a User Account disk...")
+WAPI.clear(sProgram)
+sUserID, sPasscode = WAPI.getLoginID()
+local sPrimaryDrive = WAPI.getPrimaryDrive()
+local sMountPath = WAPI.getMountPath(sPrimaryDrive)
+if disk.isPresent(sPrimaryDrive) and WFCI.exists("/" .. sMountPath .. "/WOLF/data/passcode.dat") then
+	WAPI.writeLocalMode(false)
+	sUserID = disk.getLabel(sPrimaryDrive)
+	WAPI.slowPrint("User Account disk located.", false)
+	print()
+	WAPI.slowPrint("User Account loaded.")
+else
+	WAPI.slowPrint("No User Account disk located.", false)
+	print()
+	local bChoice = WAPI.runChoiceMenu("Load Local User Account?", sProgram)
+	WAPI.clear(sProgram)
+	if bChoice == true then
+		WAPI.writeLocalMode(true)
+		WAPI.slowPrint("Local User Account loaded.")
+		sUserID, sPasscode = WAPI.getLoginID()
+	else
+		WAPI.slowPrint("Operation cancelled.")
+		os.run({}, "/WOLF/startupMenu")
+	end
+end
+
+WAPI.clear(sProgram)
+WAPI.slowPrint("Welcome " .. sUserID .. "!", false)
+print()
+local sInput = WAPI.runInputMenu("Please enter your passcode:", true)
+WAPI.clear(sProgram)
+
+if sInput == sPasscode then
+	WAPI.slowPrint("Logging in...")
+	WAPI.clear(sProgram)
+	WAPI.resetSlowPrint()
+	os.run({}, "/WOLF/mainMenu")
+else
+	WAPI.writeLocalMode(true)
+	WAPI.slowPrint("Authentication failed!")
+	os.run({}, "/WOLF/startupMenu")
+end

@@ -1,0 +1,371 @@
+--[[Copyright (C) 2012 James Chapman (aka: Toxic Wolf / toxicwolf)
+WolfOS, and all of its variations (WolfNB, WolfDB, WolfTC) are produced by toxicwolf (toxic.wolf@hotmail.co.uk).
+Please ask for permission before attempting to redistribute any code relating to WolfOS or any of its variations, IN ANY FORM.
+Special thanks to Wesley van Loon (aka: King Tamotsu / KingTamotsu) for all his ideas and help with designing the Operating System. ]]--
+
+sProgram = "File Browser"
+WAPI.clear(sProgram, true)
+
+function os.pullEvent()
+	local sEvent, p1, p2, p3, p4, p5 = os.pullEventRaw()
+	if sEvent == "terminate" then
+		term.setCursorBlink(false)
+		os.run({}, "/WOLF/utilityMenu")
+	end
+	return sEvent, p1, p2, p3, p4, p5
+end
+
+function getSide()
+	WAPI.clear(sProgram)
+	tChoices = {}
+	tActions = {}
+	tChoices[1] = "Top"
+	tChoices[2] = "Bottom"
+	tChoices[3] = "Front"
+	tChoices[4] = "Back"
+	tChoices[5] = "Left"
+	tChoices[6] = "Right"
+	tActions[1] = function() sSide = "top" end
+	tActions[2] = function() sSide = "bottom" end
+	tActions[3] = function() sSide = "front" end
+	tActions[4] = function() sSide = "back" end
+	tActions[5] = function() sSide = "left" end
+	tActions[6] = function() sSide = "right" end
+	local nSelection = WAPI.runMenu(tChoices, "Select a drive:", sProgram)
+	tActions[nSelection]()
+	return sSide
+end
+
+function fileMenu(sFilePath)
+	tChoices = {}
+	tActions = {}
+	tChoices[1] = "Move File"
+	tChoices[2] = "Copy File"
+	
+	if string.sub(sFilePath, string.len(sFilePath) - 3) == ".txt" then
+		table.insert(tChoices, "Edit File")
+	end
+	
+	table.insert(tChoices, "Rename File")
+	table.insert(tChoices, "Delete File")
+	
+	tActions[1] = function()
+		WAPI.clear(sProgram)
+		WAPI.slowPrint("Enter destination path:")
+		print()
+		WAPI.slowWrite("> ")
+		sDestinationPath = read()
+		if string.sub(sDestinationPath, 1, 1) ~= "/" then
+			sDestinationPath = "/" .. sDestinationPath
+		end
+		WAPI.clear(sProgram)
+		fs.move(sFilePath, sDestinationPath)
+		WAPI.slowPrint("File \"" .. sFilePath .. "\" moved to \"" .. sDestinationPath .. "\".")
+	end
+	
+	tActions[2] = function()
+		WAPI.clear(sProgram)
+		WAPI.slowPrint("Enter destination path:")
+		print()
+		WAPI.slowWrite("> ")
+		sDestinationPath = read()
+		if string.sub(sDestinationPath, 1, 1) ~= "/" then
+			sDestinationPath = "/" .. sDestinationPath
+		end
+		WAPI.clear(sProgram)
+		fs.copy(sFilePath, sDestinationPath)
+		WAPI.slowPrint("File \"" .. sFilePath .. "\" copied to \"" .. sDestinationPath .. "\".")
+	end
+	
+	if string.sub(sFilePath, string.len(sFilePath) - 3) == ".txt" then
+		table.insert(tActions, function()
+			os.run({}, "/WOLF/utilities/textEditor", sFilePath)
+		end)
+	end
+	
+	table.insert(tActions, function()
+		repeat
+			WAPI.clear(sProgram)
+			WAPI.slowPrint("Enter desired filename:")
+			print()
+			WAPI.slowWrite("> ")
+			sNewName = read()
+		until sNewName ~= nil
+		
+		nLastSlash = 0
+		repeat
+			sNextSlash = string.find(sFilePath, nLastSlash + 1)
+			if sNextSlash ~= nil then
+				sLastSlash = sNextSlash
+			end
+		until sNextSlash == nil
+		
+		sFilePathNoName = string.sub(sFilePath, 1, nLastSlash + 1)
+		sNewFilePath = sFilePathNoName .. sNewName
+		fs.move(sFilePath, sNewFilePath)
+		WAPI.clear(sProgram)
+		WAPI.slowPrint("File \"" .. sFilePath .. "\" renamed to \"" .. sNewFilePath .. "\".")
+	end)
+	
+	table.insert(tActions, function()
+		WAPI.clear(sProgram)
+		local bChoice = WAPI.runChoiceMenu("Delete file \"" .. sFilePath .. "\"?")
+		WAPI.clear(sProgram)
+		if bChoice == true then
+			fs.delete(sFilePath)
+			WAPI.slowPrint("File \"" .. sFilePath .. "\" deleted.")
+		else
+			WAPI.slowPrint("Operation cancelled.")
+		end
+	end)
+	
+	tActions[0] = function() end
+	
+	if WAPI.getUserType() == "user" then
+		sFileDisplay = string.sub(sFilePath, string.len("/WOLF/data/users") + 1)
+	else
+		sFileDisplay = sFilePath
+	end
+	
+	nWidth, nHeight = term.getSize()
+	if string.len(sFileDisplay) > nWidth then
+		sFileDisplay = "..." .. string.sub(sFileDisplay, string.len(sFileDisplay) + 3 - nWidth)
+	end
+	
+	local nSelection = WAPI.runMenu(tChoices, sFileDisplay, sProgram, true)
+	tActions[nSelection]()
+end
+
+function dirMenu(sDirPath)
+	tChoices = {}
+	tActions = {}
+	tChoices[1] = "Go to Directory"
+	tChoices[2] = ""
+	tChoices[3] = "Move Directory"
+	tChoices[4] = "Copy Directory"
+	tChoices[5] = "Rename Directory"
+	tChoices[6] = "Delete Directory"
+	
+	tActions[1] = function()
+		sDir = sDirPath
+		nMenuNum = 0
+	end
+	
+	tActions[2] = function()
+		WAPI.clear(sProgram)
+		WAPI.slowPrint("Enter destination path:")
+		print()
+		WAPI.slowWrite("> ")
+		sDestinationPath = read()
+		if string.sub(sDestinationPath, 1, 1) ~= "/" then
+			sDestinationPath = "/" .. sDestinationPath
+		end
+		WAPI.clear(sProgram)
+		fs.move(sDirPath, sDestinationPath)
+		WAPI.slowPrint("Directory \"" .. sDirPath .. "\" moved to \"" .. sDestinationPath .. ".")
+		sleep(1)
+	end
+	
+	tActions[3] = function()
+		WAPI.clear(sProgram)
+		WAPI.slowPrint("Enter destination path:")
+		print()
+		WAPI.slowWrite("> ")
+		sDestinationPath = read()
+		if string.sub(sDestinationPath, 1, 1) ~= "/" then
+			sDestinationPath = "/" .. sDestinationPath
+		end
+		WAPI.clear(sProgram)
+		fs.copy(sDirPath, sDestinationPath)
+		WAPI.slowPrint("Directory \"" .. sDirPath .. "\" copied to \"" .. sDestinationPath .. ".")
+		sleep(1)
+	end
+	
+	tActions[4] = function()
+		repeat
+			WAPI.clear(sProgram)
+			WAPI.slowPrint("Enter desired directory name:")
+			print()
+			WAPI.slowWrite("> ")
+			sNewName = read()
+		until sNewName ~= nil
+		
+		nLastSlash = 0
+		repeat
+			sNextSlash = string.find(sDirPath, nLastSlash + 1)
+			if sNextSlash ~= nil then
+				sLastSlash = sNextSlash
+			end
+		until sNextSlash == nil
+		
+		sDirPathNoName = string.sub(sDirPath, 1, nLastSlash + 1)
+		sNewDirPath = sDirPathNoName .. sNewName
+		fs.move(sDirPath, sNewDirPath)
+		WAPI.clear(sProgram)
+		WAPI.slowPrint("Directory \"" .. sDirPath .. "\" renamed to \"" .. sNewDirPath .. ".")
+		sleep(1)
+	end
+	
+	tActions[5] = function()
+		WAPI.clear(sProgram)
+		local bChoice = WAPI.runChoiceMenu("Delete directory \"" .. sDirPath .. "\"?")
+		WAPI.clear(sProgram)
+		if bChoice == true then
+			fs.delete(sDirPath)
+			WAPI.slowPrint("File \"" .. sDirPath .. " deleted.")
+		else
+			WAPI.slowPrint("Operation cancelled.")
+		end
+	end
+	
+	tActions[0] = function() end
+	
+	if WAPI.getUserType() == "user" then
+		sDirDisplay = string.sub(sDirPath, string.len("/WOLF/data/users") + 1)
+	else
+		sDirDisplay = sDirPath
+	end
+	
+	nWidth, nHeight = term.getSize()
+	if string.len(sDirDisplay) > nWidth then
+		sDirDisplay = "..." .. string.sub(sDirDisplay, string.len(sDirDisplay) + 3 - nWidth)
+	end
+	local nSelection = WAPI.runMenu(tChoices, sDirDisplay, sProgram, true)
+	tActions[nSelection]()
+end
+
+function menu()
+	repeat
+		if nMenuNum == 0 then
+			tChoices = {}
+			tActions = {}
+			tChoices[1] = "Change Directory"
+			tChoices[2] = "List Files/Directories"
+			tChoices[3] = ""
+			tChoices[4] = "Get Mount Path"
+			
+			tActions[1] = function()
+				repeat
+					WAPI.clear(sProgram)
+					WAPI.slowPrint("Enter directory:")
+					print("")
+					WAPI.slowWrite("> ")
+					sNewDir = read()
+				until string.find(sNewDir, "/") == nil
+				
+				if not fs.isDir(sDir .. "/" .. sNewDir) then
+					sNewDir = ""
+				end
+				
+				if sNewDir == "." then
+					sDir = sRoot
+				elseif sNewDir == ".." then
+					nNextSlashPos = 1
+					repeat
+						nNextSlashPos = string.find(sDir, "/", nNextSlashPos + 1)
+						if nNextSlashPos ~= nil then
+							nLastSlashPos = nNextSlashPos
+						end
+					until nNextSlashPos == nil
+					if nLastSlashPos ~= nil and sDir ~= sRoot then
+						sDir = string.sub(sDir, 1, nLastSlashPos - 1)
+					else
+						sDir = sRoot
+					end
+				elseif sNewDir == "" then
+					sDir = sDir
+				else
+					if sDir == "/" then
+						sDir = sDir .. sNewDir
+					else
+						sDir = sDir .. "/" .. sNewDir
+					end
+				end
+			end
+			
+			tActions[2] = function() nMenuNum = 1 end
+			
+			tActions[3] = function()
+				WAPI.clear(sProgram)
+				local sDrive = getSide()
+				WAPI.clear(sProgram)
+				if disk.isPresent(sDrive) then
+					local sMountPath = WAPI.getMountPath(sDrive)
+					WAPI.slowPrint("Mount path for " .. sDrive .. " drive is \"" .. sMountPath .. "\".")
+					sleep(1)
+				else
+					WAPI.slowPrint("No disk located.")
+					sleep(1)
+				end
+			end
+			
+			tActions[0] = function() bMenuLoop = false os.run({}, "/WOLF/utilityMenu") end
+			
+			if WAPI.getUserType() == "user" then
+				sDisplay = string.sub(sDir, string.len("/WOLF/data/users") + 1)
+			else
+				sDisplay = sDir
+			end
+			
+			nWidth, nHeight = term.getSize()
+			if string.len(sDisplay) > nWidth then
+				sDisplay = "..." .. string.sub(sDisplay, string.len(sDisplay) + 3 - nWidth)
+			end
+			
+			local nSelection = WAPI.runMenu(tChoices, sDisplay, sProgram, true)
+			tActions[nSelection]()
+		elseif nMenuNum == 1 then
+			tChoices = {}
+			tActions = {}
+			WAPI.clear(sProgram)
+			local tDirs, tFiles = WAPI.list(sDir)
+			if sDir ~= "/" then
+				_sDir = "/"
+			else
+				_sDir = ""
+			end
+			if tDirs ~= nil then
+				for nItem = 1, #tDirs do
+					table.insert(tChoices, "/" .. tDirs[nItem])
+					table.insert(tActions, function(_n) dirMenu(sDir .. _sDir .. tDirs[_n]) end)
+				end
+			end
+			table.insert(tChoices, "")
+			if tFiles ~= nil then
+				for nItem = 1, #tFiles do
+					table.insert(tChoices, tFiles[nItem])
+					table.insert(tActions, function(_n) fileMenu(sDir .. _sDir .. tFiles[_n - #tDirs]) end)
+				end
+			end
+			
+			tActions[0] = function() nMenuNum = 0 end
+			
+			if WAPI.getUserType() == "user" then
+				sDisplay = string.sub(sDir, string.len("/WOLF/data/users") + 1)
+			else
+				sDisplay = sDir
+			end
+			
+			nWidth, nHeight = term.getSize()
+			if string.len(sDisplay) > nWidth then
+				sDisplay = "..." .. string.sub(sDisplay, string.len(sDisplay) + 3 - nWidth)
+			end
+			
+			local nSelection = WAPI.runMenu(tChoices, sDisplay, sProgram, true)
+			tActions[nSelection](nSelection)
+		end
+	until bMenuLoop == false
+end
+
+bMenuLoop = true
+nMenuNum = 0
+
+if WAPI.getUserType() == "user" then
+	local sUID = WAPI.getUID()
+	sRoot = "/WOLF/data/users/" .. sUID
+else
+	sRoot = "/"
+end
+
+sDir = sRoot
+menu()
